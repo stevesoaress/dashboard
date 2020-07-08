@@ -15,13 +15,13 @@ import React, { Component } from 'react';
 import { SkeletonText } from 'carbon-components-react';
 import { FixedSizeList as List } from 'react-window';
 import { injectIntl } from 'react-intl';
-import Ansi from 'ansi-to-react';
+import Ansi2html from '../Ansi2html';
 
 import './Log.scss';
 
 const LogLine = ({ data, index, style }) => (
   <div style={style}>
-    <Ansi>{`${data[index]}\n`}</Ansi>
+    <Ansi2html>{`${data[index]}\n`}</Ansi2html>
   </div>
 );
 
@@ -53,7 +53,7 @@ export class LogContainer extends Component {
     } = this.state;
 
     if (logs.length < 20000) {
-      return <Ansi>{logs.join('\n')}</Ansi>;
+      return <Ansi2html>{logs.join('\n')}</Ansi2html>;
     }
 
     const height = reason
