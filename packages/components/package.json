@@ -15,7 +15,6 @@
     "@tektoncd/dashboard-utils": "file:../utils",
     "@vx/event": "0.0.192",
     "@vx/network": "0.0.192",
-    "ansi-to-react": "^5.0.0",
     "ansicolor": "^1.1.93",
     "d3-path": "^1.0.8",
     "elkjs": "^0.5.1",
