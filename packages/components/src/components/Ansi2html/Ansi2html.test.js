@@ -45,10 +45,8 @@ describe('Ansi2html', () => {
         }`}
       </Ansi2html>
     );
-    const element = queryByText(/hello world1/i);
-    expect(element).toBeTruthy();
-    const element2 = queryByText(/hello world2/i);
-    expect(element2).toBeTruthy();
+    queryByText(/hello world1/i).toBeTruthy();
+    queryByText(/hello world2/i).toBeTruthy();
   });
 
   it('can have links', () => {

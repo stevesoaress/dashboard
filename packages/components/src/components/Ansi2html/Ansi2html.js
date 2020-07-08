@@ -32,7 +32,7 @@ const convertCSSToStyle = css => {
   return style;
 };
 
-const parseLine = line => {
+const logMessage = line => {
   const escapedText = escapeCarriageReturn(line);
   const parsed = parse(escapedText);
   return (
@@ -49,7 +49,7 @@ const parseLine = line => {
 };
 
 const Ansi2html = ({ children }) => {
-  return parseLine(children);
+  return logMessage(children);
 };
 
 Ansi2html.propTypes = {
