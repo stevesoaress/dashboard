@@ -24,6 +24,7 @@ import {
 
 const tektonAPIGroup = 'tekton.dev';
 const triggersAPIGroup = 'triggers.tekton.dev';
+const dashboardAPIGroup = 'dashboard.tekton.dev';
 
 const apiRoot = getAPIRoot();
 
@@ -62,7 +63,9 @@ export function getKubeAPI(
     '/',
     encodeURIComponent(name),
     subResource ? `/${subResource}` : '',
-    queryParams ? `?${new URLSearchParams(queryParams).toString()}` : ''
+    queryParams && Object.keys(queryParams).length > 0
+      ? `?${new URLSearchParams(queryParams).toString()}`
+      : ''
   ].join('');
 }
 
@@ -183,7 +186,8 @@ export function createPipelineRun({
   params,
   serviceAccount,
   timeout,
-  labels
+  labels,
+  nodeSelector
 }) {
   // Create PipelineRun payload
   // expect params and resources to be objects with keys 'name' and values 'value'
@@ -212,6 +216,9 @@ export function createPipelineRun({
       }))
     }
   };
+  if (nodeSelector) {
+    payload.spec.podTemplate = { nodeSelector };
+  }
   if (serviceAccount) {
     payload.spec.serviceAccountName = serviceAccount;
   }
@@ -219,7 +226,7 @@ export function createPipelineRun({
     payload.spec.timeout = timeout;
   }
   const uri = getTektonAPI('pipelineruns', { namespace });
-  return post(uri, payload);
+  return post(uri, payload).then(({ body }) => body);
 }
 
 export function getClusterTasks({ filters = [] } = {}) {
@@ -282,11 +289,29 @@ export function getPipelineResource({ name, namespace }) {
   return get(uri);
 }
 
-export function getPodLogURL({ container, name, namespace }) {
-  let queryParams;
-  if (container) {
-    queryParams = { container };
-  }
+export function getConditions({ filters = [], namespace } = {}) {
+  const uri = getTektonAPI(
+    'conditions',
+    { namespace, version: 'v1alpha1' },
+    getQueryParams(filters)
+  );
+  return get(uri).then(checkData);
+}
+
+export function getCondition({ name, namespace }) {
+  const uri = getTektonAPI('conditions', {
+    name,
+    namespace,
+    version: 'v1alpha1'
+  });
+  return get(uri);
+}
+
+export function getPodLogURL({ container, name, namespace, follow }) {
+  const queryParams = {
+    ...(container && { container }),
+    ...(follow && { follow })
+  };
   const uri = `${getKubeAPI(
     'pods',
     { name, namespace, subResource: 'log' },
@@ -295,14 +320,14 @@ export function getPodLogURL({ container, name, namespace }) {
   return uri;
 }
 
-export function getPodLog({ container, name, namespace }) {
-  const uri = getPodLogURL({ container, name, namespace });
-  return get(uri, { Accept: 'text/plain' });
+export function getPodLog({ container, name, namespace, stream }) {
+  const uri = getPodLogURL({ container, name, namespace, follow: stream });
+  return get(uri, { Accept: 'text/plain' }, { stream });
 }
 
 export function rerunPipelineRun(namespace, payload) {
   const uri = getAPI('rerun', { namespace });
-  return post(uri, payload);
+  return post(uri, payload).then(({ headers }) => headers);
 }
 
 export function getCredentials({ namespace } = {}) {
@@ -381,12 +406,13 @@ export function getCustomResource(...args) {
   return get(uri);
 }
 
-export async function getExtensions() {
+export async function getExtensions({ namespace } = {}) {
   const uri = `${apiRoot}/v1/extensions`;
   const resourceExtensionsUri = getResourcesAPI({
-    group: 'dashboard.tekton.dev',
+    group: dashboardAPIGroup,
     version: 'v1alpha1',
-    type: 'extensions'
+    type: 'extensions',
+    namespace
   });
   let extensions = await get(uri);
   const resourceExtensions = await get(resourceExtensionsUri);
@@ -505,7 +531,8 @@ export function createTaskRun({
   params,
   resources,
   serviceAccount,
-  timeout
+  timeout,
+  nodeSelector
 }) {
   const payload = {
     apiVersion: 'tekton.dev/v1beta1',
@@ -530,6 +557,9 @@ export function createTaskRun({
       }
     }
   };
+  if (nodeSelector) {
+    payload.spec.podTemplate = { nodeSelector };
+  }
   if (params) {
     payload.spec.params = Object.keys(params).map(name => ({
       name,
@@ -559,7 +589,7 @@ export function createTaskRun({
     payload.spec.timeout = timeout;
   }
   const uri = getTektonAPI('taskruns', { namespace });
-  return post(uri, payload);
+  return post(uri, payload).then(({ body }) => body);
 }
 
 export function importResources({
@@ -727,5 +757,5 @@ export function importResources({
   }
 
   const uri = getTektonAPI('pipelineruns', { namespace: importerNamespace });
-  return post(uri, payload);
+  return post(uri, payload).then(({ body }) => body);
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,9 +13,9 @@ limitations under the License.
 
 @import '~carbon-components/scss/globals/scss/vars';
 
-.trigger {
-  .details {
-    p {
+.tkn--resourcedetails {
+  .tkn--details {
+    p:not(:empty) {
       margin-top: $spacing-03;
       span:first-child {
         font-weight: bold;
@@ -23,8 +23,14 @@ limitations under the License.
       }
     }
 
-    .bx--data-table-container {
-      width: 50%;
+    .tkn--table {
+      .bx--data-table-container {
+        .bx--data-table {
+          .cell-description {
+            max-width: 30vw;
+          }
+        }
+      }
     }
   }
 
@@ -33,7 +39,7 @@ limitations under the License.
   }
 }
 
-.resource--detail-block {
+.tkn--resourcedetails-metadata {
   margin-bottom: $layout-01;
   padding: $layout-01;
   background-color: $ui-02;

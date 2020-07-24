@@ -86,7 +86,7 @@ const UniversalFields = props => {
               defaultMessage: 'Secret type'
             })}
           >
-            <div className="secretHelper">
+            <div>
               {intl.formatMessage({
                 id: 'dashboard.secretType.helper',
                 defaultMessage:
@@ -119,7 +119,7 @@ const UniversalFields = props => {
             value="accessToken"
             id="access-radio"
             labelText={intl.formatMessage({
-              id: 'dashboard.universalFields.accessTokenRadioButton',
+              id: 'dashboard.accessTokenField.accessToken',
               defaultMessage: 'Access Token'
             })}
           />

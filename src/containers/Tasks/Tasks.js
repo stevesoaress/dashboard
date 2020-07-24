@@ -83,10 +83,7 @@ export /* istanbul ignore next */ class Tasks extends Component {
       },
       {
         key: 'namespace',
-        header: intl.formatMessage({
-          id: 'dashboard.tableHeader.namespace',
-          defaultMessage: 'Namespace'
-        })
+        header: 'Namespace'
       },
       {
         key: 'createdTime',
@@ -126,7 +123,7 @@ export /* istanbul ignore next */ class Tasks extends Component {
             name: task.metadata.name
           })}
         >
-          <Information16 className="resource-info-icon" />
+          <Information16 className="tkn--resource-info-icon" />
         </Link>
       )
     }));
@@ -200,7 +197,4 @@ const mapDispatchToProps = {
   fetchTasks
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(injectIntl(Tasks));
+export default connect(mapStateToProps, mapDispatchToProps)(injectIntl(Tasks));

@@ -21,8 +21,7 @@ import {
   FormGroup,
   InlineNotification,
   TextInput,
-  ToastNotification,
-  Tooltip
+  ToastNotification
 } from 'carbon-components-react';
 
 import { connect } from 'react-redux';
@@ -64,7 +63,7 @@ export class ImportResources extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      directory: '',
+      path: '',
       invalidInput: false,
       invalidNamespace: false,
       invalidImporterNamespace: false,
@@ -135,7 +134,7 @@ export class ImportResources extends Component {
 
   handleSubmit = () => {
     const {
-      directory: applyDirectory,
+      path: applyDirectory,
       namespace,
       repositoryURL,
       serviceAccount,
@@ -172,8 +171,8 @@ export class ImportResources extends Component {
       serviceAccount,
       importerNamespace
     })
-      .then(headers => {
-        const pipelineRunName = headers.metadata.name;
+      .then(body => {
+        const pipelineRunName = body.metadata.name;
 
         const finalURL = urls.pipelineRuns.byName({
           namespace: importerNamespace,
@@ -216,7 +215,7 @@ export class ImportResources extends Component {
       : undefined;
 
     return (
-      <div className="outer">
+      <div className="tkn--importresources-outer">
         {this.state.submitError && (
           <InlineNotification
             kind="error"
@@ -234,7 +233,7 @@ export class ImportResources extends Component {
             lowContrast
           />
         )}
-        <h1 className="importHeader">
+        <h1 className="tkn--importresources-header">
           {intl.formatMessage({
             id: 'dashboard.importResources.heading',
             defaultMessage: 'Import resources from repository'
@@ -272,24 +271,24 @@ export class ImportResources extends Component {
               value={this.state.repositoryURL}
             />
             <TextInput
-              data-testid="directory-field"
+              data-testid="path-field"
               helperText={intl.formatMessage({
-                id: 'dashboard.importResources.directory.helperText',
+                id: 'dashboard.importResources.path.helperText',
                 defaultMessage:
-                  'The location of the Tekton resources to import from the repository. Leave blank if the resources are at the top-level directory.'
+                  'The path of the Tekton resources to import from the repository. Leave blank if the resources are at the top-level directory.'
               })}
-              id="import-directory"
+              id="import-path"
               labelText={intl.formatMessage({
-                id: 'dashboard.importResources.directory.labelText',
-                defaultMessage: 'Repository directory (optional)'
+                id: 'dashboard.importResources.path.labelText',
+                defaultMessage: 'Repository path (optional)'
               })}
-              name="directory"
+              name="path"
               onChange={this.handleTextInput}
               placeholder={intl.formatMessage({
-                id: 'dashboard.importResources.directory.placeholder',
-                defaultMessage: 'Enter repository directory'
+                id: 'dashboard.importResources.path.placeholder',
+                defaultMessage: 'Enter repository path'
               })}
-              value={this.state.directory}
+              value={this.state.path}
             />
             <NamespacesDropdown
               id="import-namespaces-dropdown"
@@ -304,7 +303,7 @@ export class ImportResources extends Component {
               })}
               invalid={this.state.invalidNamespace}
               invalidText={intl.formatMessage({
-                id: 'dashboard.importResources.targetNamespace.invalidText',
+                id: 'dashboard.namespacesDropdown.invalidText',
                 defaultMessage: 'Please select a namespace'
               })}
               onChange={this.handleNamespace}
@@ -314,34 +313,11 @@ export class ImportResources extends Component {
           </FormGroup>
           <Accordion>
             <AccordionItem
-              title={
-                <Tooltip
-                  direction="right"
-                  triggerText={intl.formatMessage({
-                    id: 'dashboard.importResources.advanced.accordionText',
-                    defaultMessage:
-                      'Advanced configuration for the Import PipelineRun'
-                  })}
-                >
-                  <div>
-                    {intl.formatMessage(
-                      {
-                        id: 'dashboard.importResources.advanced.tooltip',
-                        defaultMessage:
-                          'Change these parameters if you want the PipelineRun that will do the importing to run in a different namespace from the Dashboard&apos;s.{break}You can optionally provide a different ServiceAccount too.'
-                      },
-                      {
-                        break: (
-                          <>
-                            <br />
-                            <br />
-                          </>
-                        )
-                      }
-                    )}
-                  </div>
-                </Tooltip>
-              }
+              title={intl.formatMessage({
+                id: 'dashboard.importResources.advanced.accordionText',
+                defaultMessage:
+                  'Advanced configuration for the Import PipelineRun'
+              })}
             >
               <NamespacesDropdown
                 id="import-install-namespaces-dropdown"
@@ -353,7 +329,7 @@ export class ImportResources extends Component {
                 titleText="Namespace"
                 invalid={this.state.invalidImporterNamespace}
                 invalidText={intl.formatMessage({
-                  id: 'dashboard.importResources.importerNamespace.invalidText',
+                  id: 'dashboard.namespacesDropdown.invalidText',
                   defaultMessage: 'Please select a namespace'
                 })}
                 onChange={this.handleImporterNamespace}
@@ -361,24 +337,26 @@ export class ImportResources extends Component {
                 selectedItem={selectedImporterNamespace}
               />
               <ServiceAccountsDropdown
-                className="saDropdown"
                 helperText={intl.formatMessage({
                   id: 'dashboard.importResources.serviceAccount.helperText',
                   defaultMessage:
-                    'The ServiceAccount that the PipelineRun will run under (from the namespace above)'
+                    'The ServiceAccount that the PipelineRun applying resources will run under (from the namespace above). Ensure the selected ServiceAccount (or the default if none selected) has permissions for creating PipelineRuns and for anything else your PipelineRun interacts with, including any Tekton resources in the Git repository.'
                 })}
                 id="import-service-accounts-dropdown"
                 namespace={this.state.importerNamespace}
                 onChange={this.handleServiceAccount}
                 titleText={intl.formatMessage({
-                  id: 'dashboard.importResources.serviceAccount.titleText',
+                  id: 'dashboard.serviceAccountLabel.optional',
                   defaultMessage: 'ServiceAccount (optional)'
                 })}
               />
             </AccordionItem>
           </Accordion>
           <Button kind="primary" onClick={this.handleSubmit}>
-            Import and Apply
+            {intl.formatMessage({
+              id: 'dashboard.importResources.importApplyButton',
+              defaultMessage: 'Import and Apply'
+            })}
           </Button>
           {this.state.submitSuccess && (
             <ToastNotification

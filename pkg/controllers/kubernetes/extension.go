@@ -15,16 +15,14 @@ import (
 // used within informer handler functions
 type extensionHandler struct {
 	*router.Handler
-	installNamespace string
 }
 
 // NewExtensionController registers the K8s shared informer that reacts to
 // extension service updates
-func NewExtensionController(sharedK8sInformerFactory k8sinformer.SharedInformerFactory, dashboardNamespace string, handler *router.Handler) {
+func NewExtensionController(sharedK8sInformerFactory k8sinformer.SharedInformerFactory, handler *router.Handler) {
 	logging.Log.Debug("In NewExtensionController")
 	h := extensionHandler{
-		Handler:          handler,
-		installNamespace: dashboardNamespace,
+		Handler: handler,
 	}
 	extensionServiceInformer := sharedK8sInformerFactory.Core().V1().Services().Informer()
 	// ResourceEventHandler interface functions only pass object interfaces
@@ -38,16 +36,14 @@ func NewExtensionController(sharedK8sInformerFactory k8sinformer.SharedInformerF
 
 func (e extensionHandler) serviceCreated(obj interface{}) {
 	service := obj.(*v1.Service)
-	if service.Namespace == e.installNamespace {
-		if value := service.Labels[router.ExtensionLabelKey]; value == router.ExtensionLabelValue && service.Spec.ClusterIP != "" {
-			logging.Log.Debugf("Extension Controller detected extension '%s' created", service.Name)
-			e.RegisterExtension(service)
-			data := broadcaster.SocketData{
-				MessageType: broadcaster.ExtensionCreated,
-				Payload:     obj,
-			}
-			endpoints.ResourcesChannel <- data
+	if value := service.Labels[router.ExtensionLabelKey]; value == router.ExtensionLabelValue && service.Spec.ClusterIP != "" {
+		logging.Log.Debugf("Extension Controller detected extension '%s' created", service.Name)
+		ext := e.RegisterExtension(service)
+		data := broadcaster.SocketData{
+			MessageType: broadcaster.ServiceExtensionCreated,
+			Payload:     ext,
 		}
+		endpoints.ResourcesChannel <- data
 	}
 }
 
@@ -56,39 +52,40 @@ func (e extensionHandler) serviceUpdated(oldObj, newObj interface{}) {
 	// If resourceVersion differs between old and new, an actual update event was observed
 	versionUpdated := oldService.ResourceVersion != newService.ResourceVersion
 	// Updated services will still be in the same namespace
-	if oldService.Namespace == e.installNamespace {
-		var event string
-		if value := oldService.Labels[router.ExtensionLabelKey]; versionUpdated && value == router.ExtensionLabelValue && oldService.Spec.ClusterIP != "" {
-			logging.Log.Debugf("Extension Controller Update: Removing old extension '%s'", oldService.Name)
-			e.UnregisterExtension(oldService)
-			event = "delete"
+	var event string
+	var ext *router.Extension
+	if value := oldService.Labels[router.ExtensionLabelKey]; versionUpdated && value == router.ExtensionLabelValue && oldService.Spec.ClusterIP != "" {
+		logging.Log.Debugf("Extension Controller Update: Removing old extension '%s'", oldService.Name)
+		ext = e.UnregisterExtension(oldService)
+		event = "delete"
+	}
+	if value := newService.Labels[router.ExtensionLabelKey]; versionUpdated && value == router.ExtensionLabelValue && newService.Spec.ClusterIP != "" {
+		logging.Log.Debugf("Extension Controller Update: Add new extension '%s'", newService.Name)
+		ext = e.RegisterExtension(newService)
+		if len(event) != 0 {
+			event = "update"
+		} else {
+			event = "create"
 		}
-		if value := newService.Labels[router.ExtensionLabelKey]; versionUpdated && value == router.ExtensionLabelValue && newService.Spec.ClusterIP != "" {
-			logging.Log.Debugf("Extension Controller Update: Add new extension '%s'", newService.Name)
-			e.RegisterExtension(newService)
-			if len(event) != 0 {
-				event = "update"
-			} else {
-				event = "create"
-			}
-		}
+	}
+	if ext != nil {
 		switch event {
 		case "delete": // Service has removed the extension label
 			data := broadcaster.SocketData{
-				MessageType: broadcaster.ExtensionDeleted,
-				Payload:     newObj,
+				MessageType: broadcaster.ServiceExtensionDeleted,
+				Payload:     ext,
 			}
 			endpoints.ResourcesChannel <- data
 		case "create": // Service has added the extension label
 			data := broadcaster.SocketData{
-				MessageType: broadcaster.ExtensionCreated,
-				Payload:     newObj,
+				MessageType: broadcaster.ServiceExtensionCreated,
+				Payload:     ext,
 			}
 			endpoints.ResourcesChannel <- data
 		case "update": // Extension service was modified
 			data := broadcaster.SocketData{
-				MessageType: broadcaster.ExtensionUpdated,
-				Payload:     newObj,
+				MessageType: broadcaster.ServiceExtensionUpdated,
+				Payload:     ext,
 			}
 			endpoints.ResourcesChannel <- data
 		}
@@ -97,15 +94,13 @@ func (e extensionHandler) serviceUpdated(oldObj, newObj interface{}) {
 
 func (e extensionHandler) serviceDeleted(obj interface{}) {
 	serviceMeta := utils.GetDeletedObjectMeta(obj)
-	if serviceMeta.GetNamespace() == e.installNamespace {
-		if value := serviceMeta.GetLabels()[router.ExtensionLabelKey]; value == router.ExtensionLabelValue {
-			logging.Log.Debugf("Extension Controller detected extension '%s' deleted", serviceMeta.GetName())
-			if serviceMeta.GetUID() != "" {
-				e.UnregisterExtensionByMeta(serviceMeta)
-			}
+	if value := serviceMeta.GetLabels()[router.ExtensionLabelKey]; value == router.ExtensionLabelValue {
+		logging.Log.Debugf("Extension Controller detected extension '%s' deleted", serviceMeta.GetName())
+		if serviceMeta.GetUID() != "" {
+			ext := e.UnregisterExtensionByMeta(serviceMeta)
 			data := broadcaster.SocketData{
-				MessageType: broadcaster.ExtensionDeleted,
-				Payload:     obj,
+				MessageType: broadcaster.ServiceExtensionDeleted,
+				Payload:     ext,
 			}
 			endpoints.ResourcesChannel <- data
 		}

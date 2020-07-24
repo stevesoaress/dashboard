@@ -26,7 +26,7 @@
 export DISABLE_MD_LINTING=1
 
 # FIXME(vdemeester) we need to come with something better (like baking common scripts in our image, when we got one)
-dep ensure || exit 1
+go mod vendor || exit 1
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
@@ -64,9 +64,9 @@ function get_node() {
   # denotes the Node.js and npm versions
   apt-get update
   apt-get install -y curl
-  curl -O https://nodejs.org/dist/v10.15.3/node-v10.15.3-linux-x64.tar.xz
-  tar xf node-v10.15.3-linux-x64.tar.xz
-  export PATH=$PATH:$(pwd)/node-v10.15.3-linux-x64/bin
+  curl -O https://nodejs.org/dist/v12.18.0/node-v12.18.0-linux-x64.tar.xz
+  tar xf node-v12.18.0-linux-x64.tar.xz
+  export PATH=$PATH:$(pwd)/node-v12.18.0-linux-x64/bin
 }
 
 function node_npm_install() {
@@ -83,7 +83,13 @@ function node_test() {
   local failed=0
   echo "Running node tests from $(pwd)"
   node_npm_install || failed=1
+  echo "Linting"
   npm run lint || failed=1
+  echo "Checking message bundles"
+  npm run i18n:extract || failed=1
+  git status
+  git diff-index --patch --exit-code --no-color HEAD ./src/nls/ || failed=1
+  echo "Running unit tests"
   npm run test:ci || failed=1
   echo ""
   return ${failed}

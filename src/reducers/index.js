@@ -14,6 +14,7 @@ limitations under the License.
 import { combineReducers } from 'redux';
 
 import clusterTasks, * as clusterTaskSelectors from './clusterTasks';
+import conditions, * as conditionSelectors from './conditions';
 import eventListeners, * as eventListenersSelectors from './eventListeners';
 import extensions, * as extensionSelectors from './extensions';
 import locale, * as localeSelectors from './locale';
@@ -33,6 +34,7 @@ import taskRuns, * as taskRunsSelectors from './taskRuns';
 
 export default combineReducers({
   clusterTasks,
+  conditions: conditions(),
   eventListeners: eventListeners(),
   extensions,
   locale,
@@ -294,6 +296,32 @@ export function getTaskByType(
     : getTask(state, { name, namespace });
 }
 
+export function getCondition(
+  state,
+  { name, namespace = getSelectedNamespace(state) }
+) {
+  return conditionSelectors.getCondition(state.conditions, name, namespace);
+}
+
+export function getConditions(
+  state,
+  { filters = [], namespace = getSelectedNamespace(state) } = {}
+) {
+  const resources = conditionSelectors.getConditions(
+    state.conditions,
+    namespace
+  );
+  return filterResources({ filters, resources });
+}
+
+export function getConditionsErrorMessage(state) {
+  return conditionSelectors.getConditionsErrorMessage(state.conditions);
+}
+
+export function isFetchingConditions(state) {
+  return conditionSelectors.isFetchingConditions(state.conditions);
+}
+
 export function getSecrets(
   state,
   { filters = [], namespace = getSelectedNamespace(state) } = {}
@@ -483,6 +511,10 @@ export function isReadOnly(state) {
   return propertiesSelectors.isReadOnly(state.properties);
 }
 
+export function isOpenShift(state) {
+  return propertiesSelectors.isOpenShift(state.properties);
+}
+
 export function isTriggersInstalled(state) {
   return propertiesSelectors.isTriggersInstalled(state.properties);
 }
@@ -493,4 +525,32 @@ export function getLogoutURL(state) {
 
 export function getDashboardNamespace(state) {
   return propertiesSelectors.getDashboardNamespace(state.properties);
+}
+
+export function getDashboardVersion(state) {
+  return propertiesSelectors.getDashboardVersion(state.properties);
+}
+
+export function getPipelineNamespace(state) {
+  return propertiesSelectors.getPipelineNamespace(state.properties);
+}
+
+export function getPipelineVersion(state) {
+  return propertiesSelectors.getPipelineVersion(state.properties);
+}
+
+export function getTriggersNamespace(state) {
+  return propertiesSelectors.getTriggersNamespace(state.properties);
+}
+
+export function getTriggersVersion(state) {
+  return propertiesSelectors.getTriggersVersion(state.properties);
+}
+
+export function getTenantNamespace(state) {
+  return propertiesSelectors.getTenantNamespace(state.properties);
+}
+
+export function isLogStreamingEnabled(state) {
+  return propertiesSelectors.isLogStreamingEnabled(state.properties);
 }

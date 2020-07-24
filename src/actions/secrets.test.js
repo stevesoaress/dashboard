@@ -14,12 +14,14 @@ limitations under the License.
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
 
+import * as creators from './actionCreators';
 import * as API from '../api';
 import * as selectors from '../reducers';
 import {
   clearNotification,
   createSecret,
   deleteSecret,
+  fetchSecret,
   fetchSecrets,
   fetchSecretsSuccess,
   patchSecret,
@@ -152,6 +154,21 @@ it('fetchSecrets error', async () => {
   expect(store.getActions()).toEqual(expectedActions);
 });
 
+it('fetchSecret', () => {
+  const name = 'fake-secret-name';
+  const secret = { fake: 'secret' };
+  jest
+    .spyOn(creators, 'fetchNamespacedResource')
+    .mockImplementation(() => secret);
+
+  fetchSecret({ name, namespace });
+  expect(creators.fetchNamespacedResource).toHaveBeenCalledWith(
+    'Secret',
+    API.getCredential,
+    { name, namespace }
+  );
+});
+
 it('deleteSecret', async () => {
   const secrets = [
     { name: 'default-token-kbn7j', namespace: 'default' },
@@ -177,8 +194,10 @@ it('deleteSecret', async () => {
     { type: 'SECRET_DELETE_SUCCESS' }
   ];
 
-  await store.dispatch(deleteSecret(secrets));
+  const cancelMethod = jest.fn();
+  await store.dispatch(deleteSecret(secrets, cancelMethod));
   expect(store.getActions()).toEqual(expectedActions);
+  expect(cancelMethod).toHaveBeenCalled();
 });
 
 it('deleteSecret error', async () => {
@@ -197,11 +216,14 @@ it('deleteSecret error', async () => {
 
   const expectedActions = [
     { type: 'CLEAR_SECRET_ERROR_NOTIFICATION' },
-    { type: 'SECRET_DELETE_REQUEST' }
+    { type: 'SECRET_DELETE_REQUEST' },
+    { type: 'SECRET_DELETE_FAILURE' }
   ];
 
-  await store.dispatch(deleteSecret(secrets));
+  const cancelMethod = jest.fn();
+  await store.dispatch(deleteSecret(secrets, cancelMethod));
   expect(store.getActions()).toEqual(expectedActions);
+  expect(cancelMethod).not.toHaveBeenCalled();
 });
 
 it('createSecret', async () => {

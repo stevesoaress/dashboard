@@ -170,9 +170,9 @@ export /* istanbul ignore next */ class SecretContainer extends Component {
     return (
       <>
         <h1>{secretName}</h1>
-        <div className="trigger">
-          <div className="details">
-            <div className="resource--detail-block">
+        <div className="tkn--resourcedetails">
+          <div className="tkn--details">
+            <div className="tkn--resourcedetails-metadata">
               <p>
                 <span>
                   {intl.formatMessage({
@@ -230,6 +230,7 @@ export /* istanbul ignore next */ class SecretContainer extends Component {
               headers={headersForServiceAccounts}
               rows={rowsForServiceAccounts}
               loading={loading}
+              size="short"
               selectedNamespace={namespace}
               emptyTextAllNamespaces={emptyTextMessageSAs}
               emptyTextSelectedNamespace={emptyTextMessageSAs}

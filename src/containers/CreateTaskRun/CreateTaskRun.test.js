@@ -172,6 +172,7 @@ const testStore = {
   namespaces,
   notifications: {},
   pipelineResources,
+  properties: {},
   taskRuns,
   tasks,
   clusterTasks,
@@ -236,9 +237,9 @@ const testTaskSpec = (taskId, queryByText, queryByValue) => {
   }
 };
 
-const selectTask1 = async ({ getByPlaceholderText, getByTitle }) => {
+const selectTask1 = async ({ getByPlaceholderText, getByText }) => {
   fireEvent.click(getByPlaceholderText(/select task/i));
-  const task1 = await waitForElement(() => getByTitle(/task-1/i));
+  const task1 = await waitForElement(() => getByText(/task-1/i));
   fireEvent.click(task1);
 };
 
@@ -264,12 +265,13 @@ const fillTask1Params = getByPlaceholderText => {
 const selectTask1AndFillSpec = async ({
   getAllByPlaceholderText,
   getByPlaceholderText,
+  getByText,
   getByTitle,
   queryByText,
   queryByValue
 }) => {
   // Select task-1 and verify spec details are displayed
-  await selectTask1({ getByPlaceholderText, getByTitle });
+  await selectTask1({ getByPlaceholderText, getByText });
   testTaskSpec('id-task-1', queryByText, queryByValue);
   // Fill task spec
   fillTask1Resources({ getAllByPlaceholderText, getByTitle });
@@ -287,11 +289,12 @@ describe('CreateTaskRun', () => {
       .spyOn(API, 'getPipelineResources')
       .mockImplementation(() => pipelineResources.byId);
     jest.spyOn(API, 'getTaskRuns').mockImplementation(() => taskRuns.byId);
+
+    const mockTestStore = mockStore(testStore);
+    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
   });
 
   it('handles api error', async () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     const {
       getAllByPlaceholderText,
       getAllByText,
@@ -302,19 +305,20 @@ describe('CreateTaskRun', () => {
       queryByValue,
       rerender
     } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} />
       </Provider>
     );
     rerenderWithIntl(
       rerender,
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open />
       </Provider>
     );
     await selectTask1AndFillSpec({
       getAllByPlaceholderText,
       getByPlaceholderText,
+      getByText,
       getByTitle,
       queryByText,
       queryByValue
@@ -334,8 +338,6 @@ describe('CreateTaskRun', () => {
   });
 
   it('handles api error with text', async () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     const {
       getAllByPlaceholderText,
       getAllByText,
@@ -346,19 +348,20 @@ describe('CreateTaskRun', () => {
       queryByValue,
       rerender
     } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} />
       </Provider>
     );
     rerenderWithIntl(
       rerender,
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open />
       </Provider>
     );
     await selectTask1AndFillSpec({
       getAllByPlaceholderText,
       getByPlaceholderText,
+      getByText,
       getByTitle,
       queryByText,
       queryByValue
@@ -393,12 +396,10 @@ describe('CreateTaskRun', () => {
     expect(queryByText(/create taskrun/i)).toBeTruthy();
     expect(queryByPlaceholderText(/select namespace/i)).toBeTruthy();
     expect(queryByPlaceholderText(/select task/i)).toBeTruthy();
-    expect(
-      document.getElementById('create-taskrun--tasks-dropdown').disabled
-    ).toBe(true);
+    expect(document.querySelector('[label="Select Task"]').disabled).toBe(true);
     expect(queryByPlaceholderText(/select serviceaccount/i)).toBeTruthy();
     expect(
-      document.getElementById('create-taskrun--sa-dropdown').disabled
+      document.querySelector('[label="Select ServiceAccount"]').disabled
     ).toBe(true);
     expect(queryByPlaceholderText(/60/i)).toBeTruthy();
     expect(queryByText(/cancel/i)).toBeTruthy();
@@ -410,42 +411,41 @@ describe('CreateTaskRun', () => {
     );
     fireEvent.click(await waitForElement(() => getByTitle(/namespace-1/i)));
     await wait(() =>
-      expect(
-        document.getElementById('create-taskrun--tasks-dropdown').disabled
-      ).toBe(false)
+      expect(document.querySelector('[label="Select Task"]').disabled).toBe(
+        false
+      )
     );
     await wait(() =>
       expect(
-        document.getElementById('create-taskrun--sa-dropdown').disabled
+        document.querySelector('[label="Select ServiceAccount"]').disabled
       ).toBe(false)
     );
   });
 
   it('renders task', async () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     const {
-      getByTitle,
       getAllByPlaceholderText,
       getByPlaceholderText,
+      getByText,
+      getByTitle,
       queryByDisplayValue,
       queryByText,
       queryByValue,
       rerender
     } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} />
       </Provider>
     );
     rerenderWithIntl(
       rerender,
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open />
       </Provider>
     );
     expect(queryByDisplayValue(/namespace-1/i)).toBeTruthy();
     // Select task-1 and verify spec details are displayed
-    await selectTask1({ getByTitle, getByPlaceholderText });
+    await selectTask1({ getByPlaceholderText, getByText });
     testTaskSpec('id-task-1', queryByText, queryByValue);
     // Fill task spec
     fillTask1Resources({
@@ -466,27 +466,25 @@ describe('CreateTaskRun', () => {
 
   it('renders task controlled', async () => {
     // Display with task-1 selected
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
 
     const {
-      getByText,
+      getByValue,
       queryByLabelText,
       queryByText,
       queryByValue,
       rerender
     } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} taskRef="task-1" />
       </Provider>
     );
     rerenderWithIntl(
       rerender,
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open taskRef="task-1" />
       </Provider>
     );
-    await waitForElement(() => getByText(/task-1/i));
+    await waitForElement(() => getByValue(/task-1/i));
     expect(queryByLabelText(/namespace/i)).toBeTruthy();
     // Verify spec details are displayed
     testTaskSpec('id-task-1', queryByText, queryByValue);
@@ -499,7 +497,7 @@ describe('CreateTaskRun', () => {
       getByTitle,
       queryByValue
     } = renderWithIntl(
-      <Provider store={mockStore(testStore)}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun open namespace="" />
       </Provider>
     );
@@ -518,21 +516,19 @@ describe('CreateTaskRun', () => {
   });
 
   it('resets Task and ServiceAccount when namespace changes', async () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     const {
       getByPlaceholderText,
       getByTitle,
       getByValue,
       rerender
     } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} />
       </Provider>
     );
     rerenderWithIntl(
       rerender,
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open />
       </Provider>
     );
@@ -558,8 +554,6 @@ describe('CreateTaskRun', () => {
   });
 
   it('submits form', async () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     const {
       getAllByPlaceholderText,
       getAllByText,
@@ -570,19 +564,19 @@ describe('CreateTaskRun', () => {
       queryByValue,
       rerender
     } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} />
       </Provider>
     );
     rerenderWithIntl(
       rerender,
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open />
       </Provider>
     );
     expect(queryByValue(/namespace-1/i)).toBeTruthy();
     // Select task-1 and verify spec details are displayed
-    await selectTask1({ getByPlaceholderText, getByTitle });
+    await selectTask1({ getByPlaceholderText, getByText });
     testTaskSpec('id-task-1', queryByText, queryByValue);
     // Fill task spec
     fillTask1Resources({ getAllByPlaceholderText, getByTitle });
@@ -617,6 +611,7 @@ describe('CreateTaskRun', () => {
       labels: {
         foo: 'bar'
       },
+      nodeSelector: null,
       resources: {
         inputs: {
           'resource-1': 'pipeline-resource-1',
@@ -639,7 +634,7 @@ describe('CreateTaskRun', () => {
   it('handles onClose event', () => {
     const onClose = jest.fn();
     const { getByText } = renderWithIntl(
-      <Provider store={mockStore(testStore)}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun open onClose={onClose} />
       </Provider>
     );
@@ -648,8 +643,6 @@ describe('CreateTaskRun', () => {
   });
 
   it('validates inputs', async () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     const {
       getAllByPlaceholderText,
       getAllByText,
@@ -658,7 +651,7 @@ describe('CreateTaskRun', () => {
       getByTitle,
       queryByText
     } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} namespace={ALL_NAMESPACES} />
       </Provider>
     );
@@ -671,7 +664,7 @@ describe('CreateTaskRun', () => {
     fireEvent.click(getByPlaceholderText(/select namespace/i));
     fireEvent.click(await waitForElement(() => getByTitle(/namespace-1/i)));
 
-    await selectTask1({ getByPlaceholderText, getByTitle });
+    await selectTask1({ getByPlaceholderText, getByText });
     expect(queryByText(taskValidationErrorRegExp)).toBeFalsy();
     expect(queryByText(namespaceValidationErrorRegExp)).toBeFalsy();
     // Test validation on task1 spec
@@ -719,63 +712,57 @@ describe('CreateTaskRun', () => {
   });
 
   it('handles error getting task', async () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     jest.spyOn(reducers, 'getTask').mockImplementation(() => null);
-    const { getByPlaceholderText, getByTitle, queryByText } = renderWithIntl(
-      <Provider store={mockTestStore}>
+    const { getByPlaceholderText, getByText, queryByText } = renderWithIntl(
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} />
       </Provider>
     );
-    await selectTask1({ getByPlaceholderText, getByTitle });
+    await selectTask1({ getByPlaceholderText, getByText });
     expect(queryByText(/error retrieving task information/i)).toBeTruthy();
   });
 
   it('handles error getting task controlled', () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     const badTaskRef = 'task-thisDoesNotExist';
-    const { queryByText, rerender } = renderWithIntl(
-      <Provider store={mockTestStore}>
+    const { getByPlaceholderText, queryByText, rerender } = renderWithIntl(
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} taskRef={badTaskRef} />
       </Provider>
     );
     rerenderWithIntl(
       rerender,
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open taskRef={badTaskRef} />
       </Provider>
     );
-    expect(queryByText(/error retrieving task information/i)).toBeTruthy();
+    expect(queryByText('task-thisDoesNotExist')).toBeFalsy();
+    expect(getByPlaceholderText(/select task/i)).toBeTruthy();
   });
 
   it('checks that pressing x on Task doesnt cause errors', async () => {
-    const mockTestStore = mockStore(testStore);
-    jest.spyOn(store, 'getStore').mockImplementation(() => mockTestStore);
     const {
       getByPlaceholderText,
       getByText,
-      getByTitle,
       getByValue,
       queryAllByTitle,
       queryByText,
       queryByValue,
       rerender
     } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} />
       </Provider>
     );
     rerenderWithIntl(
       rerender,
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open />
       </Provider>
     );
     // Select task-1 and verify spec details are displayed
-    await selectTask1({ getByPlaceholderText, getByTitle });
+    await selectTask1({ getByPlaceholderText, getByText });
     testTaskSpec('id-task-1', queryByText, queryByValue);
-    expect(getByText('task-1')).toBeTruthy();
+    expect(getByValue('task-1')).toBeTruthy();
 
     fireEvent.click(queryAllByTitle(/clear selected item/i)[1]);
     expect(getByValue(/namespace-1/i)).toBeTruthy();
@@ -783,9 +770,8 @@ describe('CreateTaskRun', () => {
   });
 
   it('handles close', () => {
-    const mockTestStore = mockStore(testStore);
     const { getByText } = renderWithIntl(
-      <Provider store={mockTestStore}>
+      <Provider store={store.getStore()}>
         <CreateTaskRun {...props} open />
       </Provider>
     );

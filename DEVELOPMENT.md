@@ -12,8 +12,7 @@ You must install these tools:
 
 1. [`go`](https://golang.org/doc/install): The language Tekton Dashboard is built in
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
-1. [`dep`](https://github.com/golang/dep): For managing external Go dependencies. - Please Install dep v0.5.0 or greater.
-1. [`ko`](https://github.com/google/ko): For development. `ko` version v0.1 or higher is required for `dashboard` to work correctly.
+1. [`ko`](https://github.com/google/ko): For development. `ko` version v0.5.1 or higher is required for `dashboard` to work correctly.
 1. [Node.js & npm](https://nodejs.org/): For building and running the frontend locally. See `engines` in [package.json](./package.json) for versions used. _Node.js 10.x is recommended_
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For interacting with your kube cluster.
 1. [`kustomize`](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md): For building the Dashboard kube config. You need a recent version - v3.5.4 is recommended. See [here](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md#try-go) - `GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v3` works correctly. 
@@ -95,7 +94,6 @@ kubectl create clusterrolebinding cluster-admin-binding \
 
 While iterating on the project, you may need to:
 
-1. Run `dep ensure -v` to retrieve dependencies required to build
 1. Run the Alpine based Go tests in Docker with: `docker build -f Dockerfile_test .`
 1. Run the Stretch based Go tests with race condition checking in Docker with: `docker build -f Dockerfile_race_test .`
 1. Install the dashboard
@@ -165,6 +163,23 @@ To look at the dashboard logs, run:
 
 ```shell
 kubectl logs -l app=tekton-dashboard
+```
+
+## Changing the target ARCH
+
+You can build for another ARCH by overriding GOARCH (`amd64` by default).
+
+With `Dockerfile`:
+
+```shell
+docker build --build-arg GOARCH=ppc64le .
+```
+
+With `ko`:
+
+```shell
+export GOARCH=ppc64le
+kustomize build overlays/dev | ko apply -f -
 ```
 
 ## Frontend
@@ -346,3 +361,9 @@ spec:
 ```
 
 Extensions in this context are custom resources defined in the dashboard installation. The apiVersion is `dashboard.tekton.dev/v1alpha1`.
+
+---
+
+Except as otherwise noted, the content of this page is licensed under the [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/).
+
+Code samples are licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).

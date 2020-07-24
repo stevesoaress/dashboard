@@ -17,7 +17,7 @@ import StoryRouter from 'storybook-react-router';
 import { getStatus } from '@tektoncd/dashboard-utils';
 import { action } from '@storybook/addon-actions';
 import { boolean } from '@storybook/addon-knobs';
-import { Delete16 as Delete } from '@carbon/icons-react';
+import { TrashCan32 as Delete } from '@carbon/icons-react';
 import { Dropdown } from 'carbon-components-react';
 
 import { StatusIcon } from '..';
@@ -286,8 +286,8 @@ storiesOf('Components/PipelineRuns', module)
         status: {
           getValue() {
             return (
-              <div className="definition">
-                <div className="status">
+              <div className="tkn--definition">
+                <div className="tkn--status">
                   <StatusIcon /> Pending
                 </div>
               </div>

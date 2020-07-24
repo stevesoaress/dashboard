@@ -12,12 +12,11 @@ limitations under the License.
 */
 
 import React from 'react';
+import { Route } from 'react-router-dom';
 import { fireEvent, waitForElement } from 'react-testing-library';
-import 'jest-dom/extend-expect';
-import { Provider } from 'react-redux';
-import thunk from 'redux-thunk';
-import configureStore from 'redux-mock-store';
 import { createIntl } from 'react-intl';
+import { paths, urls } from '@tektoncd/dashboard-utils';
+
 import { ServiceAccountContainer } from './ServiceAccount';
 import { renderWithRouter } from '../../utils/test';
 
@@ -26,24 +25,27 @@ const intl = createIntl({
   defaultLocale: 'en'
 });
 
+const namespace = 'tekton-pipelines';
+
 const secrets = [
   {
     name: 'secret1',
-    namespace: 'tekton-pipelines'
+    namespace
   },
   {
     name: 'imagePull1',
-    namespace: 'tekton-pipelines'
+    namespace
   }
 ];
 
+const serviceAccountName = 'service-account-simple';
 const serviceAccountSimple = {
   apiVersion: 'tekton.dev/v1alpha1',
   kind: 'ServiceAccount',
   metadata: {
     creationTimestamp: '2019-11-19T19:44:43Z',
-    name: 'service-account-simple',
-    namespace: 'tekton-pipelines',
+    name: serviceAccountName,
+    namespace,
     uid: '49243595-0c72-11ea-ae12-025000000001'
   }
 };
@@ -59,96 +61,29 @@ const serviceAccountWithLabels = {
     creationTimestamp: '2019-11-21T15:19:18Z',
     generation: 1,
     name: 'service-account-labels',
-    namespace: 'tekton-pipelines',
+    namespace,
     uid: '49243595-0c72-11ea-ae12-025000002221'
   }
 };
 
 it('ServiceAccountContainer renders', async () => {
-  const serviceAccountName = 'bar';
   const match = {
     params: {
-      serviceAccountName
-    }
-  };
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'default'
-    },
-    ServiceAccounts: {
-      byId: {},
-      byNamespace: { default: {} },
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
-  const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        fetchServiceAccount={() => Promise.resolve()}
-        fetchSecrets={() => Promise.resolve()}
-        error={null}
-        loading={false}
-      />
-    </Provider>
-  );
-  await waitForElement(() => getByText(`ServiceAccount not available`));
-});
-
-it('ServiceAccountContainer toggles between tabs correctly', async () => {
-  const match = {
-    params: {
-      serviceAccountName: 'service-account-simple'
+      serviceAccountName: 'bar'
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'tekton-pipelines'
-    },
-    ServiceAccounts: {
-      byId: 'service-account-simple',
-      byNamespace: { default: 'tekton-pipelines' },
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
-        fetchSecrets={() => Promise.resolve()}
-        serviceAccount={serviceAccountSimple}
-      />
-    </Provider>
+    <ServiceAccountContainer
+      intl={intl}
+      match={match}
+      fetchServiceAccount={() => Promise.resolve()}
+      fetchSecrets={() => Promise.resolve()}
+      error={null}
+      loading={false}
+    />
   );
-
-  await waitForElement(() => getByText('service-account-simple'));
-
-  await waitForElement(() => getByText('Date Created:'));
-  let yamlTab = getByText(/Yaml/i);
-  expect(yamlTab.parentNode.getAttribute('aria-selected')).toBe('false');
-
-  fireEvent.click(yamlTab);
-  await waitForElement(() => getByText(/creationTimestamp/i));
-  const overviewTab = getByText(/Overview/i);
-  expect(overviewTab.parentNode.getAttribute('aria-selected')).toBe('false');
-
-  fireEvent.click(overviewTab);
-  yamlTab = getByText(/Yaml/i);
-  expect(yamlTab.parentNode.getAttribute('aria-selected')).toBe('false');
+  await waitForElement(() => getByText('Error loading resource'));
 });
 
 it('ServiceAccountContainer handles error state', async () => {
@@ -158,71 +93,42 @@ it('ServiceAccountContainer handles error state', async () => {
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'default'
-    },
-    ServiceAccounts: {
-      byId: {},
-      byNamespace: { default: {} },
-      errorMessage: 'Error',
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        error="Error"
-        fetchServiceAccount={() => Promise.resolve()}
-        fetchSecrets={() => Promise.resolve()}
-      />
-    </Provider>
+    <ServiceAccountContainer
+      intl={intl}
+      match={match}
+      error="Error"
+      fetchServiceAccount={() => Promise.resolve()}
+      fetchSecrets={() => Promise.resolve()}
+    />
   );
-  await waitForElement(() => getByText('Error loading ServiceAccount'));
+  await waitForElement(() => getByText('Error loading resource'));
 });
 
 it('ServiceAccountContainer renders YAML', async () => {
-  const match = {
-    params: {
-      serviceAccountName: 'service-account-simple'
-    }
-  };
-
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'tekton-pipelines'
-    },
-    ServiceAccounts: {
-      byId: 'service-account-simple',
-      byNamespace: { default: 'tekton-pipelines' },
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
-        fetchSecrets={() => Promise.resolve()}
-        serviceAccount={serviceAccountSimple}
-      />
-    </Provider>
+    <Route
+      path={paths.serviceAccounts.byName()}
+      render={props => (
+        <ServiceAccountContainer
+          {...props}
+          intl={intl}
+          error={null}
+          fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
+          fetchSecrets={() => Promise.resolve()}
+          serviceAccount={serviceAccountSimple}
+        />
+      )}
+    />,
+    {
+      route: urls.serviceAccounts.byName({
+        namespace,
+        serviceAccountName
+      })
+    }
   );
 
-  await waitForElement(() => getByText('service-account-simple'));
+  await waitForElement(() => getByText(serviceAccountName));
   const yamlTab = getByText(/yaml/i);
   fireEvent.click(yamlTab);
   await waitForElement(() => getByText(/creationTimestamp/i));
@@ -234,39 +140,22 @@ it('ServiceAccountContainer renders YAML', async () => {
 it('ServiceAccountContainer does not render label section if they are not present', async () => {
   const match = {
     params: {
-      serviceAccountName: 'service-account-simple'
+      serviceAccountName
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'tekton-pipelines'
-    },
-    ServiceAccounts: {
-      byId: 'service-account-simple',
-      byNamespace: { default: 'tekton-pipelines' },
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
-        fetchSecrets={() => Promise.resolve()}
-        serviceAccount={serviceAccountSimple}
-      />
-    </Provider>
+    <ServiceAccountContainer
+      intl={intl}
+      match={match}
+      error={null}
+      fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
+      fetchSecrets={() => Promise.resolve()}
+      serviceAccount={serviceAccountSimple}
+    />
   );
 
-  await waitForElement(() => getByText('service-account-simple'));
+  await waitForElement(() => getByText(serviceAccountName));
   await waitForElement(() => getByText('None'));
 });
 
@@ -277,32 +166,15 @@ it('ServiceAccountContainer renders labels section if they are present', async (
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'tekton-pipelines'
-    },
-    ServiceAccounts: {
-      byId: 'service-account-labels',
-      byNamespace: { default: 'tekton-pipelines' },
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchServiceAccount={() => Promise.resolve(serviceAccountWithLabels)}
-        fetchSecrets={() => Promise.resolve()}
-        serviceAccount={serviceAccountWithLabels}
-      />
-    </Provider>
+    <ServiceAccountContainer
+      intl={intl}
+      match={match}
+      error={null}
+      fetchServiceAccount={() => Promise.resolve(serviceAccountWithLabels)}
+      fetchSecrets={() => Promise.resolve()}
+      serviceAccount={serviceAccountWithLabels}
+    />
   );
 
   await waitForElement(() => getByText('service-account-labels'));
@@ -314,40 +186,23 @@ it('ServiceAccountContainer renders labels section if they are present', async (
 it('ServiceAccountContainer renders overview with no secret nor imagePullSecrets ', async () => {
   const match = {
     params: {
-      serviceAccountName: 'service-account-simple'
+      serviceAccountName
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'tekton-pipelines'
-    },
-    ServiceAccounts: {
-      byId: 'service-account-simple',
-      byNamespace: { default: 'tekton-pipelines' },
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
-        fetchSecrets={() => Promise.resolve()}
-        serviceAccount={serviceAccountSimple}
-      />
-    </Provider>
+    <ServiceAccountContainer
+      intl={intl}
+      match={match}
+      error={null}
+      fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
+      fetchSecrets={() => Promise.resolve()}
+      serviceAccount={serviceAccountSimple}
+    />
   );
 
-  await waitForElement(() => getByText('service-account-simple'));
-  await waitForElement(() => getByText('tekton-pipelines')); // Namespace
+  await waitForElement(() => getByText(serviceAccountName));
+  await waitForElement(() => getByText(namespace));
   await waitForElement(() => getByText('None')); // Label
   await waitForElement(() =>
     getByText('No Secrets found for this ServiceAccount.')
@@ -360,44 +215,27 @@ it('ServiceAccountContainer renders overview with no secret nor imagePullSecrets
 it('ServiceAccountContainer renders secrets', async () => {
   const match = {
     params: {
-      serviceAccountName: 'service-account-simple',
-      namespace: 'tekton-pipelines'
+      serviceAccountName,
+      namespace
     }
   };
-
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'tekton-pipelines'
-    },
-    ServiceAccounts: {
-      byId: 'service-account-simple',
-      byNamespace: { default: 'tekton-pipelines' },
-      errorMessage: null,
-      isFetching: false
-    }
-  });
 
   serviceAccountSimple.secrets = [secrets[0]];
 
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
-        fetchSecrets={() => Promise.resolve()}
-        secrets={secrets}
-        serviceAccount={serviceAccountSimple}
-      />
-    </Provider>
+    <ServiceAccountContainer
+      intl={intl}
+      match={match}
+      error={null}
+      fetchServiceAccount={() => Promise.resolve(serviceAccountSimple)}
+      fetchSecrets={() => Promise.resolve()}
+      secrets={secrets}
+      serviceAccount={serviceAccountSimple}
+    />
   );
 
-  await waitForElement(() => getByText('service-account-simple'));
-  await waitForElement(() => getByText('tekton-pipelines'));
+  await waitForElement(() => getByText(serviceAccountName));
+  await waitForElement(() => getByText(namespace));
   await waitForElement(() => getByText('None'));
   await waitForElement(() => getByText('secret1'));
   await waitForElement(() =>
@@ -408,43 +246,26 @@ it('ServiceAccountContainer renders secrets', async () => {
 it('ServiceAccountContainer renders imagePullSecrets', async () => {
   const match = {
     params: {
-      serviceAccountName: 'service-account-simple'
+      serviceAccountName
     }
   };
-
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'tekton-pipelines'
-    },
-    ServiceAccounts: {
-      byId: 'service-account-simple',
-      byNamespace: { default: 'tekton-pipelines' },
-      errorMessage: null,
-      isFetching: false
-    }
-  });
 
   serviceAccountWithLabels.imagePullSecrets = [secrets[1]];
 
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ServiceAccountContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchServiceAccount={() => Promise.resolve(serviceAccountWithLabels)}
-        fetchSecrets={() => Promise.resolve()}
-        secrets={secrets}
-        serviceAccount={serviceAccountWithLabels}
-      />
-    </Provider>
+    <ServiceAccountContainer
+      intl={intl}
+      match={match}
+      error={null}
+      fetchServiceAccount={() => Promise.resolve(serviceAccountWithLabels)}
+      fetchSecrets={() => Promise.resolve()}
+      secrets={secrets}
+      serviceAccount={serviceAccountWithLabels}
+    />
   );
 
-  await waitForElement(() => getByText('service-account-simple'));
-  await waitForElement(() => getByText('tekton-pipelines'));
+  await waitForElement(() => getByText('service-account-labels'));
+  await waitForElement(() => getByText(namespace));
   await waitForElement(() => getByText('imagePull1'));
   await waitForElement(() =>
     getByText('No Secrets found for this ServiceAccount.')

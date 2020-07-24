@@ -12,6 +12,7 @@ limitations under the License.
 */
 
 import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 import {
   InlineNotification,
   StructuredListSkeleton
@@ -35,15 +36,6 @@ import { Log, RunHeader, StepDetails, TaskRunDetails, TaskTree } from '..';
 import '../../scss/Run.scss';
 
 export /* istanbul ignore next */ class PipelineRunContainer extends Component {
-  state = {
-    selectedStepId: null,
-    selectedTaskId: null
-  };
-
-  handleTaskSelected = (selectedTaskId, selectedStepId) => {
-    this.setState({ selectedStepId, selectedTaskId });
-  };
-
   loadPipelineRunData = () => {
     const { pipelineRun } = this.props;
 
@@ -59,8 +51,7 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
     return {
       error: status === 'False' && !taskRunsStatus && { message, reason },
       pipelineRun,
-      pipelineRunName: pipelineRun.metadata.name,
-      taskRunNames: taskRunsStatus && Object.keys(taskRunsStatus)
+      pipelineRunName: pipelineRun.metadata.name
     };
   };
 
@@ -97,7 +88,8 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
       return [];
     }
 
-    const { tasks, taskRuns } = this.props;
+    const { tasks, intl } = this.props;
+    let { taskRuns } = this.props;
 
     if (!tasks || !taskRuns) {
       return [];
@@ -107,10 +99,22 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
       status: { taskRuns: taskRunDetails }
     } = pipelineRun;
 
+    const retryPodIndex = {};
+    taskRuns = taskRuns.reduce((acc, taskRun) => {
+      if (taskRun.status?.retriesStatus) {
+        taskRun.status.retriesStatus.forEach((retryStatus, index) => {
+          const retryRun = { ...taskRun };
+          retryRun.status = retryStatus;
+          retryPodIndex[retryStatus.podName] = index;
+          acc.push(retryRun);
+        });
+      }
+      acc.push(taskRun);
+      return acc;
+    }, []);
     return taskRuns
       .map(taskRun => {
         let taskSpec;
-
         if (taskRun.spec.taskRef) {
           const task = selectedTask(taskRun.spec.taskRef.name, tasks);
 
@@ -135,7 +139,7 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
 
         const { reason, status: succeeded } = getStatus(taskRun);
 
-        const { pipelineTaskName } = taskRunDetails[taskRunName] || {
+        let { pipelineTaskName } = taskRunDetails[taskRunName] || {
           pipelineTaskName: taskRun.metadata.labels['tekton.dev/conditionCheck']
         };
 
@@ -167,11 +171,24 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
           );
           steps = stepsStatus(reorderedSteps, taskRun.status.steps);
         }
+        const { podName } = taskRun.status;
+
+        if (retryPodIndex[podName] || taskRun.status?.retriesStatus) {
+          const retryNumber =
+            retryPodIndex[podName] || taskRun.status.retriesStatus.length;
+          pipelineTaskName = intl.formatMessage(
+            {
+              id: 'dashboard.pipelineRun.pipelineTaskName.retry',
+              defaultMessage: '{pipelineTaskName} (retry {retryNumber, number})'
+            },
+            { pipelineTaskName, retryNumber }
+          );
+        }
 
         return {
-          id: taskRun.metadata.uid,
+          id: `${taskRun.metadata.uid}${podName}`,
           pipelineTaskName,
-          pod: taskRun.status.podName,
+          pod: podName,
           reason,
           steps,
           succeeded,
@@ -192,17 +209,20 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
       customNotification,
       error,
       fetchLogs,
-      logDownloadButton: LogDownloadButton,
+      handleTaskSelected,
       intl,
       loading,
+      logDownloadButton: LogDownloadButton,
+      onViewChange,
       pollingInterval,
       rerun,
+      selectedStepId,
+      selectedTaskId,
       showIO,
       sortTaskRuns,
-      triggerHeader
+      triggerHeader,
+      view
     } = this.props;
-
-    const { selectedStepId, selectedTaskId } = this.state;
 
     if (loading) {
       return <StructuredListSkeleton border />;
@@ -250,8 +270,7 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
     const {
       pipelineRunName,
       error: pipelineRunError,
-      pipelineRun,
-      taskRunNames
+      pipelineRun
     } = this.loadPipelineRunData();
 
     const {
@@ -290,7 +309,7 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
         </>
       );
     }
-    const taskRuns = this.loadTaskRuns(pipelineRun, taskRunNames);
+    const taskRuns = this.loadTaskRuns(pipelineRun);
 
     if (sortTaskRuns) {
       this.sortTaskRuns(taskRuns);
@@ -315,7 +334,7 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
       }
     );
 
-    const logContainer = (
+    const logContainer = selectedStepId && (
       <Log
         downloadButton={
           LogDownloadButton && (
@@ -349,31 +368,54 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
         {customNotification}
         <div className="tkn--tasks">
           <TaskTree
-            onSelect={this.handleTaskSelected}
+            onSelect={handleTaskSelected}
             selectedTaskId={selectedTaskId}
+            selectedStepId={selectedStepId}
             taskRuns={taskRuns}
           />
           {(selectedStepId && (
             <StepDetails
               definition={definition}
               logContainer={logContainer}
+              onViewChange={onViewChange}
               reason={reason}
               showIO={showIO}
               status={status}
               stepName={stepName}
               stepStatus={stepStatus}
               taskRun={taskRun}
+              view={view}
             />
           )) ||
-            (selectedTaskId && <TaskRunDetails taskRun={taskRun} />)}
+            (selectedTaskId && (
+              <TaskRunDetails
+                onViewChange={onViewChange}
+                taskRun={taskRun}
+                view={view}
+              />
+            ))}
         </div>
       </>
     );
   }
 }
 
+PipelineRunContainer.propTypes = {
+  handleTaskSelected: PropTypes.func,
+  onViewChange: PropTypes.func,
+  selectedStepId: PropTypes.string,
+  selectedTaskId: PropTypes.string,
+  sortTaskRuns: PropTypes.bool,
+  view: PropTypes.string
+};
+
 PipelineRunContainer.defaultProps = {
-  sortTaskRuns: false
+  handleTaskSelected: /* istanbul ignore next */ () => {},
+  onViewChange: /* istanbul ignore next */ () => {},
+  selectedStepId: null,
+  selectedTaskId: null,
+  sortTaskRuns: false,
+  view: null
 };
 
 export default injectIntl(PipelineRunContainer);

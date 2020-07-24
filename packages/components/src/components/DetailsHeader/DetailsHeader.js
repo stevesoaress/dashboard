@@ -29,11 +29,11 @@ class DetailsHeader extends Component {
     const { reason, status } = this.props;
 
     if (status === 'cancelled') {
-      return <CloseFilled className="status-icon" />;
+      return <CloseFilled className="tkn--status-icon" />;
     }
 
     if (status === 'running') {
-      return <Spinner className="status-icon" />;
+      return <Spinner className="tkn--status-icon" />;
     }
 
     let Icon = ChevronRight;
@@ -45,7 +45,7 @@ class DetailsHeader extends Component {
       }
     }
 
-    return <Icon className="status-icon" />;
+    return <Icon className="tkn--status-icon" />;
   }
 
   statusLabel() {
@@ -118,8 +118,10 @@ class DetailsHeader extends Component {
       >
         <h2>
           {icon}
-          <span className="tkn--run-details-name ">{stepName}</span>
-          <span className="status-label">{statusLabel}</span>
+          <span className="tkn--run-details-name" title={stepName}>
+            {stepName}
+          </span>
+          <span className="tkn--status-label">{statusLabel}</span>
         </h2>
       </header>
     );

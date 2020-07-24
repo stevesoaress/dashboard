@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,7 +15,9 @@ import * as API from '../api';
 
 import {
   fetchLogs,
+  followLogs,
   getGitValues,
+  getViewChangeHandler,
   isStale,
   sortRunsByStartTime,
   typeToPlural
@@ -110,6 +112,44 @@ describe('fetchLogs', () => {
   });
 });
 
+describe('followLogs', () => {
+  it('should return the pod logs', () => {
+    const stepName = 'kubectl-apply';
+    const stepStatus = { container: 'step-kubectl-apply' };
+    const taskRun = { pod: 'pipeline-run-123456', namespace: 'default' };
+
+    const logs = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('fake logs'));
+      }
+    });
+    jest.spyOn(API, 'getPodLog').mockImplementation(() => logs);
+
+    const returnedLogs = followLogs(stepName, stepStatus, taskRun);
+    expect(API.getPodLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        container: stepStatus.container,
+        name: taskRun.pod,
+        namespace: taskRun.namespace,
+        stream: true
+      })
+    );
+    returnedLogs.then(data => {
+      expect(data).toBe(logs);
+    });
+  });
+
+  it('should not call the API when the pod is not specified', () => {
+    const stepName = 'kubectl-apply';
+    const stepStatus = { container: 'step-kubectl-apply' };
+    const taskRun = { namespace: 'default' };
+    jest.spyOn(API, 'getPodLog');
+
+    followLogs(stepName, stepStatus, taskRun);
+    expect(API.getPodLog).not.toHaveBeenCalled();
+  });
+});
+
 describe('getGitValues', () => {
   it('should return an object describing the parts of the git URL', () => {
     const url = 'https://github.com/user/repo';
@@ -130,4 +170,17 @@ describe('getGitValues', () => {
 
     expect(returnedValue).toEqual({});
   });
+});
+
+it('getViewChangeHandler', () => {
+  const url = 'someURL';
+  const history = { push: jest.fn() };
+  const location = { search: '?nonViewQueryParam=someValue' };
+  const match = { url };
+  const handleViewChange = getViewChangeHandler({ history, location, match });
+  const view = 'someView';
+  handleViewChange(view);
+  expect(history.push).toHaveBeenCalledWith(
+    `${url}?nonViewQueryParam=someValue&view=${view}`
+  );
 });

@@ -28,6 +28,7 @@ import {
   getTaskRunsErrorMessage,
   getTasks,
   getTasksErrorMessage,
+  isLogStreamingEnabled,
   isReadOnly,
   isWebSocketConnected
 } from '../../reducers';
@@ -37,19 +38,18 @@ import { fetchClusterTasks, fetchTasks } from '../../actions/tasks';
 import { fetchTaskRuns } from '../../actions/taskRuns';
 import { rerunPipelineRun } from '../../api';
 
-import { fetchLogs } from '../../utils';
-import './PipelineRun.scss';
+import { fetchLogs, followLogs, getViewChangeHandler } from '../../utils';
 
 export /* istanbul ignore next */ class PipelineRunContainer extends Component {
   constructor(props) {
     super(props);
     this.setShowRerunNotification = this.setShowRerunNotification.bind(this);
-  }
 
-  state = {
-    loading: true,
-    showRerunNotification: false
-  };
+    this.state = {
+      loading: true,
+      showRerunNotification: false
+    };
+  }
 
   componentDidMount() {
     const { match } = this.props;
@@ -88,6 +88,27 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
     this.setState({ showRerunNotification: value });
   }
 
+  handleTaskSelected = (selectedTaskId, selectedStepId) => {
+    const { history, location, match } = this.props;
+    const queryParams = new URLSearchParams(location.search);
+
+    queryParams.set('taskRun', selectedTaskId);
+    if (selectedStepId) {
+      queryParams.set('step', selectedStepId);
+    } else {
+      queryParams.delete('step');
+    }
+
+    const currentStepId = this.props.selectedStepId;
+    const currentTaskId = this.props.selectedTaskId;
+    if (selectedStepId !== currentStepId || selectedTaskId !== currentTaskId) {
+      queryParams.delete('view');
+    }
+
+    const browserURL = match.url.concat(`?${queryParams.toString()}`);
+    history.push(browserURL);
+  };
+
   fetchData({ skipLoading } = {}) {
     const { match } = this.props;
     const { namespace, pipelineRunName } = match.params;
@@ -111,8 +132,11 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
       intl,
       match,
       pipelineRun,
+      selectedStepId,
+      selectedTaskId,
       tasks,
-      taskRuns
+      taskRuns,
+      view
     } = this.props;
 
     if (!pipelineRun) {
@@ -148,6 +172,10 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
       />
     );
 
+    const logsRetriever = this.props.isLogStreamingEnabled
+      ? followLogs
+      : fetchLogs;
+
     return (
       <>
         {showRerunNotification && (
@@ -175,15 +203,20 @@ export /* istanbul ignore next */ class PipelineRunContainer extends Component {
         )}
         <PipelineRun
           error={error}
+          fetchLogs={logsRetriever}
+          handleTaskSelected={this.handleTaskSelected}
           loading={loading}
-          fetchLogs={fetchLogs}
           logDownloadButton={LogDownloadButton}
+          onViewChange={getViewChangeHandler(this.props)}
           pipelineRun={pipelineRun}
+          rerun={rerun}
+          selectedStepId={selectedStepId}
+          selectedTaskId={selectedTaskId}
           showIO
           sortTaskRuns
-          tasks={tasks.concat(clusterTasks)}
           taskRuns={taskRuns}
-          rerun={rerun}
+          tasks={tasks.concat(clusterTasks)}
+          view={view}
         />
       </>
     );
@@ -200,20 +233,29 @@ PipelineRunContainer.propTypes = {
 
 /* istanbul ignore next */
 function mapStateToProps(state, ownProps) {
-  const { match } = ownProps;
+  const { location, match } = ownProps;
   const { namespace } = match.params;
 
+  const queryParams = new URLSearchParams(location.search);
+  const selectedTaskId = queryParams.get('taskRun');
+  const selectedStepId = queryParams.get('step');
+  const view = queryParams.get('view');
+
   return {
-    isReadOnly: isReadOnly(state),
+    clusterTasks: getClusterTasks(state),
     error:
       getPipelineRunsErrorMessage(state) ||
       getTasksErrorMessage(state) ||
       getTaskRunsErrorMessage(state),
+    isReadOnly: isReadOnly(state),
     namespace,
     pipelineRun: getPipelineRun(state, {
       name: ownProps.match.params.pipelineRunName,
       namespace
     }),
+    selectedStepId,
+    selectedTaskId,
+    isLogStreamingEnabled: isLogStreamingEnabled(state),
     tasks: getTasks(state, { namespace }),
 
     taskRuns: getTaskRunsByPipelineRunName(
@@ -223,7 +265,7 @@ function mapStateToProps(state, ownProps) {
         namespace
       }
     ),
-    clusterTasks: getClusterTasks(state),
+    view,
     webSocketConnected: isWebSocketConnected(state)
   };
 }

@@ -155,14 +155,15 @@ export function reorderSteps(unorderedSteps, orderedSteps) {
 }
 
 export function isRunning(reason, status) {
-  return status === 'Unknown' && reason === 'Running';
+  return (
+    status === 'Unknown' &&
+    (reason === 'Running' || reason === 'PipelineRunStopping')
+  );
 }
 
 // Generates a unique id
 export function generateId(prefix) {
-  return `${prefix}${Math.random()
-    .toString(36)
-    .substr(2, 9)}`;
+  return `${prefix}${Math.random().toString(36).substr(2, 9)}`;
 }
 
 export function formatLabels(labelsRaw) {
@@ -184,6 +185,9 @@ export function formatLabels(labelsRaw) {
 
 // Sorts the steps by finishedAt and startedAt timestamps
 export function sortStepsByTimestamp(steps) {
+  if (!steps) {
+    return [];
+  }
   return steps.sort((i, j) => {
     const iFinishAt = new Date(i.stepStatus?.terminated?.finishedAt).getTime();
     const jFinishAt = new Date(j.stepStatus?.terminated?.finishedAt).getTime();
@@ -319,5 +323,35 @@ export function getResources({ resources, inputs, outputs }) {
   return {
     inputResources: inputs && inputs.resources,
     outputResources: outputs && outputs.resources
+  };
+}
+
+/* istanbul ignore next */
+export function getTranslateWithId(intl) {
+  return function translateWithId(id) {
+    switch (id) {
+      case 'close.menu':
+        return intl.formatMessage({
+          id: 'carbon.listBoxMenuIcon.close.menu',
+          defaultMessage: 'Close menu'
+        });
+      case 'open.menu':
+        return intl.formatMessage({
+          id: 'carbon.listBoxMenuIcon.open.menu',
+          defaultMessage: 'Open menu'
+        });
+      case 'clear.all':
+        return intl.formatMessage({
+          id: 'carbon.listBoxSelection.clear.all',
+          defaultMessage: 'Clear all selected items'
+        });
+      case 'clear.selection':
+        return intl.formatMessage({
+          id: 'carbon.listBoxSelection.clear.selection',
+          defaultMessage: 'Clear selected item'
+        });
+      default:
+        return '';
+    }
   };
 }

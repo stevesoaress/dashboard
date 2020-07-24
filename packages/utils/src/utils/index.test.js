@@ -167,6 +167,7 @@ it('getStatus with no status', () => {
 
 it('isRunning', () => {
   expect(isRunning('Running', 'Unknown')).toBe(true);
+  expect(isRunning('PipelineRunStopping', 'Unknown')).toBe(true);
   expect(isRunning('?', 'Unknown')).toBe(false);
   expect(isRunning('Running', '?')).toBe(false);
 });
@@ -374,6 +375,10 @@ it('formatLabels', () => {
     'gitServer: github.com',
     'tekton.dev/pipeline: pipeline0'
   ]);
+});
+
+it('sortStepsByTimestamp handles falsy steps', () => {
+  expect(sortStepsByTimestamp(null)).toEqual([]);
 });
 
 it('sortStepsByTimestamp preserves order if no timestamps present', () => {

@@ -84,10 +84,7 @@ const PipelineRuns = ({
       id: 'dashboard.tableHeader.pipeline',
       defaultMessage: 'Pipeline'
     }),
-    namespace: intl.formatMessage({
-      id: 'dashboard.tableHeader.namespace',
-      defaultMessage: 'Namespace'
-    }),
+    namespace: 'Namespace',
     createdTime: intl.formatMessage({
       id: 'dashboard.tableHeader.createdTime',
       defaultMessage: 'Created'
@@ -175,9 +172,9 @@ const PipelineRuns = ({
         )),
       namespace,
       status: (
-        <div className="definition">
+        <div className="tkn--definition">
           <div
-            className="status"
+            className="tkn--status"
             data-status={status}
             data-reason={reason}
             title={getPipelineRunStatusTooltip(pipelineRun, intl)}

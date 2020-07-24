@@ -12,43 +12,30 @@ limitations under the License.
 */
 
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
 import { injectIntl } from 'react-intl';
 import { InlineNotification } from 'carbon-components-react';
 import { Table } from '@tektoncd/dashboard-components';
 import { getErrorMessage, getTitle } from '@tektoncd/dashboard-utils';
 
-import { getInstallProperties } from '../../api';
+import tektonLogo from '../../images/tekton-stacked-color.svg';
 
-const initialState = {
-  dashboardInfo: null,
-  error: null,
-  loading: true
-};
+import {
+  getDashboardNamespace,
+  getDashboardVersion,
+  getLogoutURL,
+  getPipelineNamespace,
+  getPipelineVersion,
+  getTriggersNamespace,
+  getTriggersVersion,
+  isOpenShift,
+  isReadOnly,
+  isTriggersInstalled
+} from '../../reducers';
 
-const dashboardPropertiesToCheck = [
-  { property: 'DashboardNamespace', required: true, display: 'Namespace' },
-  { property: 'DashboardVersion', required: true, display: 'Version' },
-  { property: 'IsOpenShift' },
-  { property: 'ReadOnly' }
-];
-
-const pipelinesPropertiesToCheck = [
-  { property: 'PipelineNamespace', required: true, display: 'Namespace' },
-  { property: 'PipelineVersion', required: true, display: 'Version' }
-];
-
-const triggersPropertiesToCheck = [
-  { property: 'TriggersNamespace', display: 'Namespace' },
-  { property: 'TriggersVersion', display: 'Version' }
-];
-
-const propertiesToCheck = dashboardPropertiesToCheck
-  .concat(pipelinesPropertiesToCheck)
-  .concat(triggersPropertiesToCheck);
+import './About.scss';
 
 export /* istanbul ignore next */ class About extends Component {
-  state = initialState;
-
   componentDidMount() {
     const { intl } = this.props;
     document.title = getTitle({
@@ -57,32 +44,7 @@ export /* istanbul ignore next */ class About extends Component {
         defaultMessage: 'About'
       })
     });
-    this.fetchDashboardInfo();
   }
-
-  checkMissingProperties = () => {
-    const { intl } = this.props;
-    const { dashboardInfo } = this.state;
-    const errorsFound = propertiesToCheck
-      .map(({ property, required }) =>
-        dashboardInfo[property] || !required ? null : property
-      )
-      .filter(Boolean);
-
-    if (!errorsFound.length) {
-      return;
-    }
-
-    const error = intl.formatMessage(
-      {
-        id: 'dashboard.about.missingProperties',
-        defaultMessage: 'Could not find: {errorsFound}'
-      },
-      { errorsFound: errorsFound.join(', ') }
-    );
-
-    this.setState({ error });
-  };
 
   getDisplayValue = value => {
     const { intl } = this.props;
@@ -98,24 +60,32 @@ export /* istanbul ignore next */ class About extends Component {
     }
   };
 
-  async fetchDashboardInfo() {
-    try {
-      const dashboardInfo = await getInstallProperties();
-      this.setState(
-        {
-          dashboardInfo,
-          loading: false
-        },
-        this.checkMissingProperties
-      );
-    } catch (error) {
-      this.setState({ error, loading: false });
-    }
-  }
+  checkMissingProperties = () => {
+    const { intl } = this.props;
+    const propertiesToCheck = {
+      DashboardNamespace: this.props.dashboardNamespace,
+      DashboardVersion: this.props.dashboardVersion,
+      PipelineNamespace: this.props.pipelinesNamespace,
+      PipelineVersion: this.props.pipelinesVersion
+    };
+
+    const errorsFound = Object.keys(propertiesToCheck)
+      .map(key => (propertiesToCheck[key] ? null : key))
+      .filter(Boolean);
+
+    return errorsFound.length
+      ? intl.formatMessage(
+          {
+            id: 'dashboard.about.missingProperties',
+            defaultMessage: 'Could not find: {errorsFound}'
+          },
+          { errorsFound: errorsFound.join(', ') }
+        )
+      : null;
+  };
 
   render() {
     const { intl } = this.props;
-    const { dashboardInfo, error, loading } = this.state;
 
     const headers = [
       {
@@ -134,25 +104,38 @@ export /* istanbul ignore next */ class About extends Component {
       }
     ];
 
-    const filteredRows = propsToCheck => {
-      const rows = [];
-      if (dashboardInfo && !loading) {
-        propsToCheck.forEach(({ property, display }) => {
-          const value = this.getDisplayValue(dashboardInfo[property]);
-          if (value) {
-            rows.push({
-              id: property,
-              property: display || property,
-              value
-            });
+    const getRow = (property, value) => {
+      const displayValue = this.getDisplayValue(value);
+      return displayValue
+        ? {
+            id: property,
+            property,
+            value: displayValue
           }
-        });
-      }
-      return rows;
+        : undefined;
     };
 
+    const error = this.checkMissingProperties();
+
+    const versionLabel = intl.formatMessage({
+      id: 'dashboard.about.version',
+      defaultMessage: 'Version'
+    });
+    const isOpenShiftLabel = intl.formatMessage({
+      id: 'dashboard.about.isOpenShift',
+      defaultMessage: 'IsOpenShift'
+    });
+    const isReadOnlyLabel = intl.formatMessage({
+      id: 'dashboard.about.isReadOnly',
+      defaultMessage: 'ReadOnly'
+    });
+    const logoutURLLabel = intl.formatMessage({
+      id: 'dashboard.about.logoutURL',
+      defaultMessage: 'LogoutURL'
+    });
+
     return (
-      <>
+      <div className="tkn--about">
         {error && (
           <InlineNotification
             kind="error"
@@ -170,37 +153,73 @@ export /* istanbul ignore next */ class About extends Component {
             defaultMessage: 'About'
           })}
         </h1>
-        <div data-testid="dashboard-table">
-          <Table
-            title="Dashboard"
-            headers={headers}
-            rows={filteredRows(dashboardPropertiesToCheck)}
-            loading={loading}
-          />
-        </div>
-        <div data-testid="pipelines-table">
-          <Table
-            title="Pipelines"
-            headers={headers}
-            rows={filteredRows(pipelinesPropertiesToCheck)}
-            loading={loading}
-          />
-        </div>
-        {dashboardInfo &&
-          dashboardInfo.TriggersNamespace &&
-          dashboardInfo.TriggersVersion && (
-            <div data-testid="triggers-table">
+        <div className="tkn--about--content">
+          <div className="tkn--about--tables">
+            <Table
+              title="Dashboard"
+              headers={headers}
+              rows={[
+                getRow('Namespace', this.props.dashboardNamespace),
+                getRow(versionLabel, this.props.dashboardVersion),
+                getRow(isOpenShiftLabel, this.props.isOpenShift),
+                getRow(isReadOnlyLabel, this.props.isReadOnly),
+                getRow(logoutURLLabel, this.props.logoutURL)
+              ].filter(Boolean)}
+              size="short"
+              className="tkn--about--dashboard-table"
+            />
+            <Table
+              title="Pipelines"
+              headers={headers}
+              rows={[
+                getRow('Namespace', this.props.pipelinesNamespace),
+                getRow(versionLabel, this.props.pipelinesVersion)
+              ].filter(Boolean)}
+              size="short"
+              className="tkn--about--pipelines-table"
+            />
+            {this.props.isTriggersInstalled && (
               <Table
                 title="Triggers"
                 headers={headers}
-                rows={filteredRows(triggersPropertiesToCheck)}
-                loading={loading}
+                rows={[
+                  getRow('Namespace', this.props.triggersNamespace),
+                  getRow(versionLabel, this.props.triggersVersion)
+                ].filter(Boolean)}
+                size="short"
+                className="tkn--about--triggers-table"
               />
-            </div>
-          )}
-      </>
+            )}
+          </div>
+          <div className="tkn--about--image-wrapper">
+            <img
+              alt={intl.formatMessage({
+                id: 'dashboard.logo.alt',
+                defaultMessage: 'Tekton logo'
+              })}
+              src={tektonLogo}
+              role="presentation"
+            />
+          </div>
+        </div>
+      </div>
     );
   }
 }
 
-export default injectIntl(About);
+/* istanbul ignore next */
+const mapStateToProps = state => ({
+  dashboardNamespace: getDashboardNamespace(state),
+  dashboardVersion: getDashboardVersion(state),
+  isReadOnly: isReadOnly(state),
+  isOpenShift: isOpenShift(state),
+  logoutURL: getLogoutURL(state),
+  pipelinesNamespace: getPipelineNamespace(state),
+  pipelinesVersion: getPipelineVersion(state),
+  isTriggersInstalled: isTriggersInstalled(state),
+  triggersNamespace: getTriggersNamespace(state),
+  triggersVersion: getTriggersVersion(state)
+});
+
+export const AboutWithIntl = injectIntl(About);
+export default connect(mapStateToProps)(AboutWithIntl);

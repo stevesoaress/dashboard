@@ -15,48 +15,20 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { injectIntl } from 'react-intl';
-import { InlineNotification, Tag } from 'carbon-components-react';
-import {
-  FormattedDate,
-  Tab,
-  Table,
-  Tabs,
-  ViewYAML
-} from '@tektoncd/dashboard-components';
-import { formatLabels, getTitle } from '@tektoncd/dashboard-utils';
+import { ResourceDetails, Table } from '@tektoncd/dashboard-components';
+import { getTitle } from '@tektoncd/dashboard-utils';
 import {
   getClusterTriggerBinding,
   getClusterTriggerBindingsErrorMessage,
+  isFetchingClusterTriggerBindings,
   isWebSocketConnected
 } from '../../reducers';
-
+import { getViewChangeHandler } from '../../utils';
 import { fetchClusterTriggerBinding } from '../../actions/clusterTriggerBindings';
 
 import '../../scss/Triggers.scss';
 
 export /* istanbul ignore next */ class ClusterTriggerBindingContainer extends Component {
-  static notification({ kind, message, intl }) {
-    const titles = {
-      info: intl.formatMessage({
-        id: 'dashboard.clusterTriggerBinding.unavailable',
-        defaultMessage: 'ClusterTriggerBinding not available'
-      }),
-      error: intl.formatMessage({
-        id: 'dashboard.clusterTriggerBinding.errorloading',
-        defaultMessage: 'Error loading ClusterTriggerBinding'
-      })
-    };
-    return (
-      <InlineNotification
-        kind={kind}
-        hideCloseButton
-        lowContrast
-        title={titles[kind]}
-        subtitle={message}
-      />
-    );
-  }
-
   componentDidMount() {
     const { match } = this.props;
     const { clusterTriggerBindingName: resourceName } = match.params;
@@ -96,33 +68,13 @@ export /* istanbul ignore next */ class ClusterTriggerBindingContainer extends C
 
   render() {
     const {
+      clusterTriggerBinding,
       intl,
       error,
-      match,
+      loading,
       selectedNamespace,
-      clusterTriggerBinding
+      view
     } = this.props;
-    const { clusterTriggerBindingName } = match.params;
-
-    if (error) {
-      return ClusterTriggerBindingContainer.notification({
-        kind: 'error',
-        intl
-      });
-    }
-    if (!clusterTriggerBinding) {
-      return ClusterTriggerBindingContainer.notification({
-        kind: 'info',
-        intl
-      });
-    }
-
-    let formattedLabelsToRender = [];
-    if (clusterTriggerBinding.metadata.labels) {
-      formattedLabelsToRender = formatLabels(
-        clusterTriggerBinding.metadata.labels
-      );
-    }
 
     const headersForParameters = [
       {
@@ -141,13 +93,12 @@ export /* istanbul ignore next */ class ClusterTriggerBindingContainer extends C
       }
     ];
 
-    const rowsForParameters = clusterTriggerBinding.spec.params.map(
-      ({ name, value }) => ({
+    const rowsForParameters =
+      clusterTriggerBinding?.spec.params.map(({ name, value }) => ({
         id: name,
         name,
         value
-      })
-    );
+      })) || [];
 
     const emptyTextMessage = intl.formatMessage({
       id: 'dashboard.clusterTriggerBinding.noParams',
@@ -155,67 +106,26 @@ export /* istanbul ignore next */ class ClusterTriggerBindingContainer extends C
     });
 
     return (
-      <div className="trigger">
-        <h1>{clusterTriggerBindingName}</h1>
-        <Tabs selected={0} aria-label="ClusterTriggerBinding details">
-          <Tab
-            id={`${clusterTriggerBindingName}-overview`}
-            label={intl.formatMessage({
-              id: 'dashboard.resource.overviewTab',
-              defaultMessage: 'Overview'
-            })}
-          >
-            <div className="details">
-              <div className="resource--detail-block">
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.metadata.dateCreated',
-                      defaultMessage: 'Date Created:'
-                    })}
-                  </span>
-                  <FormattedDate
-                    date={clusterTriggerBinding.metadata.creationTimestamp}
-                    relative
-                  />
-                </p>
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.metadata.labels',
-                      defaultMessage: 'Labels:'
-                    })}
-                  </span>
-                  {formattedLabelsToRender.length === 0
-                    ? intl.formatMessage({
-                        id: 'dashboard.metadata.none',
-                        defaultMessage: 'None'
-                      })
-                    : formattedLabelsToRender.map(label => (
-                        <Tag type="blue" key={label}>
-                          {label}
-                        </Tag>
-                      ))}
-                </p>
-              </div>
-              <Table
-                title={intl.formatMessage({
-                  id: 'dashboard.parameters.title',
-                  defaultMessage: 'Parameters'
-                })}
-                headers={headersForParameters}
-                rows={rowsForParameters}
-                selectedNamespace={selectedNamespace}
-                emptyTextAllNamespaces={emptyTextMessage}
-                emptyTextSelectedNamespace={emptyTextMessage}
-              />
-            </div>
-          </Tab>
-          <Tab id={`${clusterTriggerBindingName}-yaml`} label="YAML">
-            <ViewYAML resource={clusterTriggerBinding} />
-          </Tab>
-        </Tabs>
-      </div>
+      <ResourceDetails
+        error={error}
+        loading={loading}
+        onViewChange={getViewChangeHandler(this.props)}
+        resource={clusterTriggerBinding}
+        view={view}
+      >
+        <Table
+          title={intl.formatMessage({
+            id: 'dashboard.parameters.title',
+            defaultMessage: 'Parameters'
+          })}
+          headers={headersForParameters}
+          rows={rowsForParameters}
+          size="short"
+          selectedNamespace={selectedNamespace}
+          emptyTextAllNamespaces={emptyTextMessage}
+          emptyTextSelectedNamespace={emptyTextMessage}
+        />
+      </ResourceDetails>
     );
   }
 }
@@ -230,15 +140,20 @@ ClusterTriggerBindingContainer.propTypes = {
 
 /* istanbul ignore next */
 function mapStateToProps(state, ownProps) {
-  const { match } = ownProps;
+  const { location, match } = ownProps;
   const { clusterTriggerBindingName } = match.params;
+
+  const queryParams = new URLSearchParams(location.search);
+  const view = queryParams.get('view');
 
   const clusterTriggerBinding = getClusterTriggerBinding(state, {
     name: clusterTriggerBindingName
   });
   return {
-    error: getClusterTriggerBindingsErrorMessage(state),
     clusterTriggerBinding,
+    error: getClusterTriggerBindingsErrorMessage(state),
+    loading: isFetchingClusterTriggerBindings(state),
+    view,
     webSocketConnected: isWebSocketConnected(state)
   };
 }

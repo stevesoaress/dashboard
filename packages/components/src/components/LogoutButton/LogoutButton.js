@@ -37,7 +37,7 @@ export class LogoutButton extends Component {
       const logoutURL = await this.props.getLogoutURL();
       this.setState({ logoutURL });
     } catch (error) {
-      console.log(error); // eslint-disable-line
+      console.log(error); // eslint-disable-line no-console
     }
   }
 
@@ -46,15 +46,19 @@ export class LogoutButton extends Component {
     if (!logoutURL) {
       return null;
     }
+
+    const logoutString = this.props.intl.formatMessage({
+      id: 'dashboard.header.logOut',
+      defaultMessage: 'Log out'
+    });
+
     return (
       <HeaderGlobalAction
+        aria-label={logoutString}
         data-testid="logout-btn"
         className="tkn--logout-btn"
         onClick={this.handleLogout}
-        title={this.props.intl.formatMessage({
-          id: 'dashboard.header.logOut',
-          defaultMessage: 'Log out'
-        })}
+        title={logoutString}
       >
         <LogoutIcon />
       </HeaderGlobalAction>

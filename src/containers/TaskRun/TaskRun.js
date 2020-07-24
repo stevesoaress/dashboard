@@ -37,13 +37,15 @@ import {
   updateUnexecutedSteps
 } from '@tektoncd/dashboard-utils';
 
-import { fetchLogs } from '../../utils';
+import { fetchLogs, followLogs, getViewChangeHandler } from '../../utils';
+
 import { LogDownloadButton } from '..';
 import {
   getSelectedNamespace,
   getTaskByType,
   getTaskRun,
   getTaskRunsErrorMessage,
+  isLogStreamingEnabled,
   isWebSocketConnected
 } from '../../reducers';
 
@@ -52,6 +54,9 @@ import { fetchTask, fetchTaskByType } from '../../actions/tasks';
 import { fetchTaskRun } from '../../actions/taskRuns';
 
 const taskTypeKeys = { ClusterTask: 'clustertasks', Task: 'tasks' };
+const STEP = 'step';
+const TASK_RUN_DETAILS = 'taskRunDetails';
+const VIEW = 'view';
 
 export /* istanbul ignore next */ class TaskRunContainer extends Component {
   // once redux store is available errors will be handled properly with dedicated components
@@ -77,10 +82,7 @@ export /* istanbul ignore next */ class TaskRunContainer extends Component {
     );
   }
 
-  state = {
-    loading: true,
-    selectedStepId: null
-  };
+  state = { loading: true };
 
   componentDidMount() {
     const { match, namespace } = this.props;
@@ -116,7 +118,24 @@ export /* istanbul ignore next */ class TaskRunContainer extends Component {
   }
 
   handleTaskSelected = (_, selectedStepId) => {
-    this.setState({ selectedStepId });
+    const { history, location, match } = this.props;
+    const queryParams = new URLSearchParams(location.search);
+
+    if (selectedStepId) {
+      queryParams.set(STEP, selectedStepId);
+      queryParams.delete(TASK_RUN_DETAILS);
+    } else {
+      queryParams.delete(STEP);
+      queryParams.set(TASK_RUN_DETAILS, true);
+    }
+
+    const currentStepId = this.props.selectedStepId;
+    if (selectedStepId !== currentStepId) {
+      queryParams.delete(VIEW);
+    }
+
+    const browserURL = match.url.concat(`?${queryParams.toString()}`);
+    history.push(browserURL);
   };
 
   loadTaskRun = () => {
@@ -172,8 +191,14 @@ export /* istanbul ignore next */ class TaskRunContainer extends Component {
   }
 
   render() {
-    const { loading, selectedStepId } = this.state;
-    const { error, intl } = this.props;
+    const { loading } = this.state;
+    const {
+      error,
+      intl,
+      selectedStepId,
+      showTaskRunDetails,
+      view
+    } = this.props;
 
     if (loading) {
       return <StructuredListSkeleton border />;
@@ -216,7 +241,11 @@ export /* istanbul ignore next */ class TaskRunContainer extends Component {
       message: taskRunStatusMessage
     } = getStatus(this.props.taskRun);
 
-    const logContainer = (
+    const logsRetriever = this.props.isLogStreamingEnabled
+      ? followLogs
+      : fetchLogs;
+
+    const logContainer = selectedStepId && (
       <Log
         downloadButton={
           <LogDownloadButton
@@ -225,11 +254,13 @@ export /* istanbul ignore next */ class TaskRunContainer extends Component {
             taskRun={taskRun}
           />
         }
-        fetchLogs={() => fetchLogs(stepName, stepStatus, taskRun)}
+        fetchLogs={() => logsRetriever(stepName, stepStatus, taskRun)}
         key={stepName}
         stepStatus={stepStatus}
       />
     );
+
+    const onViewChange = getViewChangeHandler(this.props);
 
     return (
       <>
@@ -244,21 +275,30 @@ export /* istanbul ignore next */ class TaskRunContainer extends Component {
         <div className="tkn--tasks">
           <TaskTree
             onSelect={this.handleTaskSelected}
-            selectedTaskId={taskRun.id}
+            selectedStepId={selectedStepId}
+            selectedTaskId={showTaskRunDetails && taskRun.id}
             taskRuns={[taskRun]}
           />
           {(selectedStepId && (
             <StepDetails
               definition={definition}
               logContainer={logContainer}
+              onViewChange={onViewChange}
               reason={reason}
               showIO
               status={status}
               stepName={stepName}
               stepStatus={stepStatus}
               taskRun={taskRun}
+              view={view}
             />
-          )) || <TaskRunDetails taskRun={taskRun} />}
+          )) || (
+            <TaskRunDetails
+              onViewChange={onViewChange}
+              taskRun={taskRun}
+              view={view}
+            />
+          )}
         </div>
       </>
     );
@@ -275,8 +315,13 @@ TaskRunContainer.propTypes = {
 
 /* istanbul ignore next */
 function mapStateToProps(state, ownProps) {
-  const { match } = ownProps;
+  const { location, match } = ownProps;
   const { namespace: namespaceParam, taskRunName } = match.params;
+
+  const queryParams = new URLSearchParams(location.search);
+  const selectedStepId = queryParams.get(STEP);
+  const view = queryParams.get(VIEW);
+  const showTaskRunDetails = queryParams.get(TASK_RUN_DETAILS);
 
   const namespace = namespaceParam || getSelectedNamespace(state);
   const taskRun = getTaskRun(state, {
@@ -294,8 +339,12 @@ function mapStateToProps(state, ownProps) {
   return {
     error: getTaskRunsErrorMessage(state),
     namespace,
+    selectedStepId,
+    isLogStreamingEnabled: isLogStreamingEnabled(state),
+    showTaskRunDetails,
     taskRun,
     task,
+    view,
     webSocketConnected: isWebSocketConnected(state)
   };
 }

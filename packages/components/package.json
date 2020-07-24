@@ -26,22 +26,26 @@
     "react-window": "^1.8.5"
   },
   "peerDependencies": {
-    "@carbon/icons-react": "^10.9.1",
-    "carbon-components": "^10.10.1",
-    "carbon-components-react": "^7.10.1",
+    "@carbon/icons-react": "^10.13.0",
+    "carbon-components": "^10.15.0",
+    "carbon-components-react": "^7.15.0",
     "react": "^16.8.4",
     "react-dom": "^16.8.4",
-    "react-intl": "^3.12.1",
+    "react-intl": "^4.7.1",
     "react-router-dom": "^5.0.0"
   },
   "engines": {
-    "node": "^10.15.1",
-    "npm": "^6.4.1"
+    "node": "^12.18.0",
+    "npm": "^6.14.4"
   },
   "publishConfig": {
     "access": "public"
   },
+<<<<<<< HEAD
   "devDependencies": {
     "colors": "^1.4.0"
   }
+=======
+  "sideEffects": ["*.scss"]
+>>>>>>> master
 }

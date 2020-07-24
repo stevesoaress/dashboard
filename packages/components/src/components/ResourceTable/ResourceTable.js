@@ -30,6 +30,7 @@ const ResourceTable = props => {
     <DataTable
       rows={rowParams}
       headers={headerParams}
+      size="short"
       render={({
         rows,
         headers,
@@ -37,7 +38,7 @@ const ResourceTable = props => {
         getRowProps,
         getTableProps
       }) => (
-        <TableContainer title={title}>
+        <TableContainer title={title} className="tkn--table">
           <Table {...getTableProps()}>
             <TableHead>
               <TableRow>

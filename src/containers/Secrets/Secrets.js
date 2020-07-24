@@ -30,14 +30,13 @@ import {
   getTitle,
   urls
 } from '@tektoncd/dashboard-utils';
-import { Add16 as Add, Delete16 as Delete } from '@carbon/icons-react';
+import { Add16 as Add, TrashCan32 as Delete } from '@carbon/icons-react';
 import { LabelFilter } from '..';
 import DeleteModal from '../../components/SecretsDeleteModal';
 import {
   clearNotification,
   deleteSecret,
-  fetchSecrets,
-  resetCreateSecret
+  fetchSecrets
 } from '../../actions/secrets';
 import { selectNamespace } from '../../actions/namespaces';
 import { fetchServiceAccounts } from '../../actions/serviceAccounts';
@@ -58,6 +57,25 @@ const initialState = {
   openDeleteSecret: false,
   toBeDeleted: []
 };
+
+function base64Decode(input) {
+  return decodeURIComponent(
+    atob(input)
+      .split('')
+      .map(
+        character =>
+          '%' + // eslint-disable-line prefer-template
+          (
+            '00' + // eslint-disable-line prefer-template
+            character
+              .charCodeAt(0) // returns UTF-16 code unit for this character
+              .toString(16)
+          ) // set radix 16 to ensure we get a UTF-16 encoded string
+            .slice(-2) // account for the '00' padding
+      )
+      .join('')
+  );
+}
 
 export /* istanbul ignore next */ class Secrets extends Component {
   constructor(props) {
@@ -182,10 +200,7 @@ export /* istanbul ignore next */ class Secrets extends Component {
       },
       {
         key: 'namespace',
-        header: intl.formatMessage({
-          id: 'dashboard.tableHeader.namespace',
-          defaultMessage: 'Namespace'
-        })
+        header: 'Namespace'
       },
       {
         key: 'serviceAccounts',
@@ -291,7 +306,7 @@ export /* istanbul ignore next */ class Secrets extends Component {
       let secretTypeToDisplay = translatedReload;
 
       if (secret.data.username) {
-        secretUsernameToDisplay = atob(secret.data.username);
+        secretUsernameToDisplay = base64Decode(secret.data.username);
       }
 
       if (secret.type) {
@@ -393,7 +408,7 @@ export /* istanbul ignore next */ class Secrets extends Component {
                 defaultMessage: 'Secret type'
               })}
             >
-              <div className="secretHelper">
+              <div>
                 {intl.formatMessage({
                   id: 'dashboard.secretType.helper',
                   defaultMessage: `Use Password with git or image PipelineResources that require authentication. Use Access Token with webhooks or with pullRequest PipelineResources. Check the Tekton Pipelines documentation for more details on authentication.`
@@ -426,7 +441,7 @@ export /* istanbul ignore next */ class Secrets extends Component {
               value="accessToken"
               id="access-radio"
               labelText={intl.formatMessage({
-                id: 'dashboard.universalFields.accessTokenRadioButton',
+                id: 'dashboard.accessTokenField.accessToken',
                 defaultMessage: 'Access Token'
               })}
             />
@@ -497,7 +512,6 @@ const mapDispatchToProps = {
   deleteSecret,
   fetchSecrets,
   fetchServiceAccounts,
-  resetCreateSecret,
   selectNamespace
 };
 

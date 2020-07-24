@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,7 +21,6 @@ import { ALL_NAMESPACES, urls } from '@tektoncd/dashboard-utils';
 import { renderWithIntl, renderWithRouter } from '../../utils/test';
 import ImportResourcesContainer from './ImportResources';
 import * as API from '../../api';
-import 'jest-dom/extend-expect';
 
 describe('ImportResources component', () => {
   const middleware = [thunk];
@@ -82,7 +81,7 @@ describe('ImportResources component', () => {
     await waitForElement(() => getByText(/Please submit a valid URL/i));
   });
 
-  it('Displays an error when Namepsace is empty', async () => {
+  it('Displays an error when Namespace is empty', async () => {
     const { getByTestId, getByText } = await renderWithIntl(
       <Provider store={store}>
         <ImportResourcesContainer />

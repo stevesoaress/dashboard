@@ -15,6 +15,7 @@ import React from 'react';
 import { injectIntl } from 'react-intl';
 import { Button, Dropdown, TextInput } from 'carbon-components-react';
 import { AddAlt24 as Add, CloseOutline20 as Remove } from '@carbon/icons-react';
+import { getTranslateWithId } from '@tektoncd/dashboard-utils';
 
 const itemToString = item => (item ? item.text : '');
 
@@ -43,7 +44,7 @@ const Annotations = props => {
     <>
       {annotations.map((annotation, index) => {
         return (
-          <div className="annotationDiv" key={annotation.id}>
+          <div className="tkn--annotationDiv" key={annotation.id}>
             <Dropdown
               id="accessTo"
               titleText={intl.formatMessage({
@@ -70,6 +71,7 @@ const Annotations = props => {
                 handleAnnotationChange('access', index, e.selectedItem)
               }
               disabled={loading}
+              translateWithId={getTranslateWithId(intl)}
             />
             <TextInput
               id="serverURL"
@@ -92,7 +94,7 @@ const Annotations = props => {
             />
             {annotations.length !== 1 && (
               <Remove
-                className="removeIcon"
+                className="tkn--createsecret-removeIcon"
                 data-testid="removeIcon"
                 onClick={() => handleRemove(index)}
                 disabled={loading}
@@ -107,7 +109,7 @@ const Annotations = props => {
         onClick={handleAdd}
         disabled={loading}
         iconDescription={intl.formatMessage({
-          id: 'dashboard.createSecret.addAnnotationsIcon',
+          id: 'dashboard.keyValueList.add',
           defaultMessage: 'Add'
         })}
       >

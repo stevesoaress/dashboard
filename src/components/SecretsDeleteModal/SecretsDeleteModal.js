@@ -13,7 +13,8 @@ limitations under the License.
 
 import React from 'react';
 import { injectIntl } from 'react-intl';
-import { ListItem, Modal, UnorderedList } from 'carbon-components-react';
+import { ListItem, UnorderedList } from 'carbon-components-react';
+import { Modal } from '@tektoncd/dashboard-components';
 
 const SecretsDeleteModal = props => {
   const { intl, open, toBeDeleted, handleClick, handleDelete } = props;
@@ -21,7 +22,6 @@ const SecretsDeleteModal = props => {
   return (
     <Modal
       open={open}
-      className="deleteModal"
       data-testid="deleteModal"
       primaryButtonText={intl.formatMessage({
         id: 'dashboard.actions.deleteButton',
@@ -43,7 +43,7 @@ const SecretsDeleteModal = props => {
       <p>
         {intl.formatMessage({
           id: 'dashboard.secrets.deleteConfirm',
-          defaultMessage: 'Are you sure you want to delete these secrets?'
+          defaultMessage: 'Are you sure you want to delete these Secrets?'
         })}
       </p>
       <UnorderedList nested>

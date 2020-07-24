@@ -14,6 +14,7 @@ limitations under the License.
 import React from 'react';
 import { injectIntl } from 'react-intl';
 import PropTypes from 'prop-types';
+import classNames from 'classnames';
 import {
   Button,
   DataTable,
@@ -120,6 +121,7 @@ function getTranslateWithId(intl) {
 const Table = props => {
   const {
     batchActionButtons,
+    className,
     emptyTextAllNamespaces,
     emptyTextSelectedNamespace,
     filters,
@@ -143,8 +145,12 @@ const Table = props => {
   const hasToolbar =
     filters || toolbarButtons.length || shouldRenderBatchActions;
 
+  const tableClassNames = classNames('tkn--table', className, {
+    'tkn--table-with-filters': filters
+  });
+
   return (
-    <div className={`tkn--table ${filters ? 'tkn--table-with-filters' : ''}`}>
+    <div className={tableClassNames}>
       <DataTable
         key={selectedNamespace}
         rows={dataRows}
@@ -251,9 +257,9 @@ const Table = props => {
                             key={cell.id}
                             id={cell.id}
                             className={`cell-${cell.info.header}`}
-                            {...typeof cell.value === 'string' && {
+                            {...(typeof cell.value === 'string' && {
                               title: cell.value
-                            }}
+                            })}
                           >
                             {cell.value}
                           </TableCell>
@@ -273,6 +279,8 @@ const Table = props => {
 
 Table.defaultProps = {
   batchActionButtons: [],
+  emptyTextAllNamespaces: null,
+  emptyTextSelectedNamespace: null,
   isSortable: false,
   loading: false,
   selectedNamespace: null,
@@ -282,8 +290,8 @@ Table.defaultProps = {
 
 Table.propTypes = {
   batchActionButtons: PropTypes.arrayOf(PropTypes.object),
-  emptyTextAllNamespaces: PropTypes.string.isRequired,
-  emptyTextSelectedNamespace: PropTypes.string.isRequired,
+  emptyTextAllNamespaces: PropTypes.string,
+  emptyTextSelectedNamespace: PropTypes.string,
   headers: PropTypes.arrayOf(PropTypes.object).isRequired,
   isSortable: PropTypes.bool,
   loading: PropTypes.bool,

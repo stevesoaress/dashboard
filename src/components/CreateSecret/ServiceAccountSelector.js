@@ -44,14 +44,12 @@ const ServiceAccountSelector = props => {
   const serviceAccountsFormatted = serviceAccounts
     .filter(serviceAccount => serviceAccount.metadata.namespace === namespace)
     .map(serviceAccount => ({
-      id: `${serviceAccount.metadata.namespace}:${
-        serviceAccount.metadata.name
-      }`,
+      id: `${serviceAccount.metadata.namespace}:${serviceAccount.metadata.name}`,
       serviceAccount: serviceAccount.metadata.name
     }));
 
   return (
-    <div className="selectServiceAccount">
+    <div className="tkn--selectServiceAccount">
       {errorMessagePatched && (
         <InlineNotification
           kind="error"
@@ -64,13 +62,12 @@ const ServiceAccountSelector = props => {
             id: 'dashboard.notification.clear',
             defaultMessage: 'Clear Notification'
           })}
-          className="notificationComponent"
           data-testid="errorNotificationComponent"
           lowContrast
         />
       )}
 
-      <div className="serviceAccountHeader">
+      <div className="tkn--serviceAccountHeader">
         <h1>
           {intl.formatMessage(
             {

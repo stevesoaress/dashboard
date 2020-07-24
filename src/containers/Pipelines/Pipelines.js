@@ -83,10 +83,7 @@ export /* istanbul ignore next */ class Pipelines extends Component {
       },
       {
         key: 'namespace',
-        header: intl.formatMessage({
-          id: 'dashboard.tableHeader.namespace',
-          defaultMessage: 'Namespace'
-        })
+        header: 'Namespace'
       },
       {
         key: 'createdTime',
@@ -126,7 +123,7 @@ export /* istanbul ignore next */ class Pipelines extends Component {
             name: pipeline.metadata.name
           })}
         >
-          <Information16 className="resource-info-icon" />
+          <Information16 className="tkn--resource-info-icon" />
         </Link>
       )
     }));

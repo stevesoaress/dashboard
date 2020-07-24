@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,48 +15,21 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { injectIntl } from 'react-intl';
-import { InlineNotification, Tag } from 'carbon-components-react';
-import { formatLabels, getTitle } from '@tektoncd/dashboard-utils';
-import {
-  FormattedDate,
-  Tab,
-  Tabs,
-  Trigger,
-  ViewYAML
-} from '@tektoncd/dashboard-components';
+import { getTitle } from '@tektoncd/dashboard-utils';
+import { ResourceDetails, Trigger } from '@tektoncd/dashboard-components';
 import {
   getEventListener,
   getEventListenersErrorMessage,
   getSelectedNamespace,
+  isFetchingEventListeners,
   isWebSocketConnected
 } from '../../reducers';
 import { fetchEventListener } from '../../actions/eventListeners';
+import { getViewChangeHandler } from '../../utils';
 
 import './EventListener.scss';
 
 export /* istanbul ignore next */ class EventListenerContainer extends Component {
-  static notification({ kind, message, intl }) {
-    const titles = {
-      info: intl.formatMessage({
-        id: 'dashboard.eventListener.unavailable',
-        defaultMessage: 'EventListener not available'
-      }),
-      error: intl.formatMessage({
-        id: 'dashboard.eventListener.errorloading',
-        defaultMessage: 'Error loading EventListener'
-      })
-    };
-    return (
-      <InlineNotification
-        kind={kind}
-        hideCloseButton
-        lowContrast
-        title={titles[kind]}
-        subtitle={message}
-      />
-    );
-  }
-
   componentDidMount() {
     const { match } = this.props;
     const { eventListenerName: resourceName } = match.params;
@@ -88,6 +61,66 @@ export /* istanbul ignore next */ class EventListenerContainer extends Component
     }
   }
 
+  getAdditionalMetadata() {
+    const { eventListener, intl } = this.props;
+
+    if (!eventListener) {
+      return null;
+    }
+
+    const { serviceAccountName, serviceType } = eventListener.spec;
+    return (
+      <>
+        {serviceAccountName && (
+          <p>
+            <span>
+              {intl.formatMessage({
+                id: 'dashboard.eventListener.serviceAccount',
+                defaultMessage: 'ServiceAccount:'
+              })}
+            </span>
+            {serviceAccountName}
+          </p>
+        )}
+        {serviceType && (
+          <p>
+            <span>
+              {intl.formatMessage({
+                id: 'dashboard.eventListener.serviceType',
+                defaultMessage: 'Service Type:'
+              })}
+            </span>
+            {serviceType}
+          </p>
+        )}
+      </>
+    );
+  }
+
+  getTriggersContent() {
+    const { eventListener } = this.props;
+
+    if (!eventListener) {
+      return null;
+    }
+
+    const { triggers } = eventListener.spec;
+    const { namespace } = eventListener.metadata;
+
+    return (
+      <div className="tkn--eventlistener--triggers">
+        {triggers.map((trigger, idx) => (
+          <div
+            className="tkn--resourcedetails-metadata"
+            key={trigger.name ? trigger.name : idx}
+          >
+            <Trigger eventListenerNamespace={namespace} trigger={trigger} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   fetchData() {
     const { match } = this.props;
     const { namespace, eventListenerName } = match.params;
@@ -95,128 +128,19 @@ export /* istanbul ignore next */ class EventListenerContainer extends Component
   }
 
   render() {
-    const { intl, error, match, eventListener } = this.props;
-
-    if (error) {
-      return EventListenerContainer.notification({
-        kind: 'error',
-        intl
-      });
-    }
-    if (!eventListener) {
-      return EventListenerContainer.notification({
-        kind: 'error',
-        message: intl.formatMessage({
-          id: 'dashboard.eventListener.unavailable',
-          defaultMessage: 'EventListener not available'
-        }),
-        intl
-      });
-    }
-
-    const { triggers } = eventListener.spec;
-    const { eventListenerName } = match.params;
-    const eventListenerNamespace = eventListener.metadata.namespace;
-
-    let formattedLabelsToRender = [];
-    if (eventListener.metadata.labels) {
-      formattedLabelsToRender = formatLabels(eventListener.metadata.labels);
-    }
+    const { error, eventListener, loading, view } = this.props;
 
     return (
-      <div className="trigger">
-        <h1>{eventListenerName}</h1>
-        <Tabs selected={0}>
-          <Tab
-            label={intl.formatMessage({
-              id: 'dashboard.resource.detailsTab',
-              defaultMessage: 'Details'
-            })}
-          >
-            <div className="details">
-              <div className="resource--detail-block">
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.metadata.dateCreated',
-                      defaultMessage: 'Date Created:'
-                    })}
-                  </span>
-                  <FormattedDate
-                    date={eventListener.metadata.creationTimestamp}
-                    relative
-                  />
-                </p>
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.metadata.labels',
-                      defaultMessage: 'Labels:'
-                    })}
-                  </span>
-                  {formattedLabelsToRender.length === 0
-                    ? intl.formatMessage({
-                        id: 'dashboard.metadata.none',
-                        defaultMessage: 'None'
-                      })
-                    : formattedLabelsToRender.map(label => (
-                        <Tag type="blue" key={label}>
-                          {label}
-                        </Tag>
-                      ))}
-                </p>
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.metadata.namespace',
-                      defaultMessage: 'Namespace:'
-                    })}
-                  </span>
-                  {eventListener.metadata.namespace}
-                </p>
-                {eventListener.spec.serviceAccountName && (
-                  <p>
-                    <span>
-                      {intl.formatMessage({
-                        id: 'dashboard.eventListener.serviceAccount',
-                        defaultMessage: 'ServiceAccount:'
-                      })}
-                    </span>
-                    {eventListener.spec.serviceAccountName}
-                  </p>
-                )}
-                {eventListener.spec.serviceType && (
-                  <p>
-                    <span>
-                      {intl.formatMessage({
-                        id: 'dashboard.eventListener.serviceType',
-                        defaultMessage: 'Service Type:'
-                      })}
-                    </span>
-                    {eventListener.spec.serviceType}
-                  </p>
-                )}
-              </div>
-              <div className="eventlistener--triggers">
-                {triggers.map((trigger, idx) => (
-                  <div
-                    className="resource--detail-block"
-                    key={trigger.name ? trigger.name : idx}
-                  >
-                    <Trigger
-                      eventListenerNamespace={eventListenerNamespace}
-                      trigger={trigger}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Tab>
-          <Tab label="YAML">
-            <ViewYAML resource={eventListener} />
-          </Tab>
-        </Tabs>
-      </div>
+      <ResourceDetails
+        additionalMetadata={this.getAdditionalMetadata()}
+        error={error}
+        loading={loading}
+        onViewChange={getViewChangeHandler(this.props)}
+        resource={eventListener}
+        view={view}
+      >
+        {this.getTriggersContent()}
+      </ResourceDetails>
     );
   }
 }
@@ -231,8 +155,11 @@ EventListenerContainer.propTypes = {
 
 /* istanbul ignore next */
 function mapStateToProps(state, ownProps) {
-  const { match } = ownProps;
+  const { location, match } = ownProps;
   const { namespace: namespaceParam, eventListenerName } = match.params;
+
+  const queryParams = new URLSearchParams(location.search);
+  const view = queryParams.get('view');
 
   const namespace = namespaceParam || getSelectedNamespace(state);
   const eventListener = getEventListener(state, {
@@ -242,6 +169,8 @@ function mapStateToProps(state, ownProps) {
   return {
     error: getEventListenersErrorMessage(state),
     eventListener,
+    loading: isFetchingEventListeners(state),
+    view,
     webSocketConnected: isWebSocketConnected(state)
   };
 }

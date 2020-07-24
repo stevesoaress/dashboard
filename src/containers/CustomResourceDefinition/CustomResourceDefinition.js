@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -14,12 +14,8 @@ limitations under the License.
 import React, { Component } from 'react';
 import { injectIntl } from 'react-intl';
 import { connect } from 'react-redux';
-import {
-  CodeSnippetSkeleton,
-  InlineNotification
-} from 'carbon-components-react';
-import { getErrorMessage, getTitle } from '@tektoncd/dashboard-utils';
-import { ViewYAML } from '@tektoncd/dashboard-components';
+import { getTitle } from '@tektoncd/dashboard-utils';
+import { ResourceDetails } from '@tektoncd/dashboard-components';
 
 import { fetchClusterTask, fetchTask } from '../../actions/tasks';
 import { fetchPipeline } from '../../actions/pipelines';
@@ -33,6 +29,7 @@ import {
   getTasksErrorMessage,
   isWebSocketConnected
 } from '../../reducers';
+import { getViewChangeHandler } from '../../utils';
 
 import { getCustomResource } from '../../api';
 
@@ -107,36 +104,30 @@ export /* istanbul ignore next */ class CustomResourceDefinition extends Compone
     const error = this.props.error || this.state.error;
     const resource = this.props.resource || this.state.resource;
     const { loading } = this.state;
-    const { intl } = this.props;
 
-    if (loading) {
-      return <CodeSnippetSkeleton type="multi" />;
-    }
+    const { view } = this.props;
 
-    if (error || !resource) {
-      return (
-        <InlineNotification
-          kind="error"
-          hideCloseButton
-          lowContrast
-          title={intl.formatMessage({
-            id: 'dashboard.customResourceDefinition.errorLoading',
-            defaultMessage: 'Error loading resource'
-          })}
-          subtitle={getErrorMessage(error)}
-        />
-      );
-    }
-
-    return <ViewYAML resource={resource} />;
+    return (
+      <ResourceDetails
+        error={error}
+        loading={loading}
+        onViewChange={getViewChangeHandler(this.props)}
+        resource={resource}
+        view={view}
+      />
+    );
   }
 }
 
 /* istanbul ignore next */
 function mapStateToProps(state, ownProps) {
-  const { match } = ownProps;
+  const { location, match } = ownProps;
   const { name, type } = ownProps.match.params;
   const { namespace } = match.params;
+
+  const queryParams = new URLSearchParams(location.search);
+  const view = queryParams.get('view');
+
   const resourceMap = {
     clustertasks: getClusterTask(state, name),
     tasks: getTask(state, { name, namespace }),
@@ -155,6 +146,7 @@ function mapStateToProps(state, ownProps) {
     error: errorMap[type],
     namespace,
     resource: resourceMap[type],
+    view,
     webSocketConnected: isWebSocketConnected(state)
   };
 }

@@ -15,23 +15,9 @@ import React, { Component } from 'react';
 import { injectIntl } from 'react-intl';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
-import {
-  DataTable,
-  InlineNotification,
-  Tab,
-  Tabs,
-  Tag
-} from 'carbon-components-react';
-import {
-  DataTableSkeleton,
-  FormattedDate,
-  ViewYAML
-} from '@tektoncd/dashboard-components';
-import {
-  formatLabels,
-  getErrorMessage,
-  getTitle
-} from '@tektoncd/dashboard-utils';
+import { DataTable } from 'carbon-components-react';
+import { ResourceDetails } from '@tektoncd/dashboard-components';
+import { getTitle } from '@tektoncd/dashboard-utils';
 
 import {
   getPipelineResource,
@@ -39,6 +25,7 @@ import {
   isFetchingPipelineResources,
   isWebSocketConnected
 } from '../../reducers';
+import { getViewChangeHandler } from '../../utils';
 
 import { fetchPipelineResource } from '../../actions/pipelineResources';
 
@@ -91,246 +78,146 @@ export /* istanbul ignore next */ class PipelineResourceContainer extends Compon
   }
 
   render() {
-    const { error, intl, loading, match, pipelineResource } = this.props;
-    const { pipelineResourceName } = match.params;
-
-    if (loading && !pipelineResource) {
-      return <DataTableSkeleton />;
-    }
-
-    if (error) {
-      return (
-        <InlineNotification
-          kind="error"
-          hideCloseButton
-          lowContrast
-          title={intl.formatMessage({
-            id: 'dashboard.pipelineResource.errorLoading',
-            defaultMessage: 'Error loading PipelineResource'
-          })}
-          subtitle={getErrorMessage(error)}
-        />
-      );
-    }
-
-    if (!pipelineResource) {
-      return (
-        <InlineNotification
-          kind="info"
-          hideCloseButton
-          lowContrast
-          title={intl.formatMessage({
-            id: 'dashboard.pipelineResource.failed',
-            defaultMessage: 'Cannot load PipelineResource'
-          })}
-          subtitle={intl.formatMessage(
-            {
-              id: 'dashboard.pipelineResource.failedSubtitle',
-              defaultMessage:
-                'PipelineResource {pipelineResourceName} not found'
-            },
-            { pipelineResourceName }
-          )}
-        />
-      );
-    }
-
-    const { params, secrets, type } = pipelineResource.spec;
-    let formattedLabelsToRender = [];
-    if (pipelineResource.metadata.labels) {
-      formattedLabelsToRender = formatLabels(pipelineResource.metadata.labels);
-    }
+    const { error, intl, loading, pipelineResource, view } = this.props;
+    const { params = [], secrets, type } = pipelineResource?.spec || {};
 
     return (
-      <>
-        <h1>{pipelineResourceName}</h1>
+      <ResourceDetails
+        additionalMetadata={
+          <p>
+            <span>
+              {intl.formatMessage({
+                id: 'dashboard.pipelineResource.type',
+                defaultMessage: 'Type:'
+              })}
+            </span>
+            {type}
+          </p>
+        }
+        error={error}
+        loading={loading}
+        onViewChange={getViewChangeHandler(this.props)}
+        resource={pipelineResource}
+        view={view}
+      >
+        <DataTable
+          rows={params.map(({ name, value }) => ({
+            id: name,
+            name,
+            value
+          }))}
+          headers={[
+            {
+              key: 'name',
+              header: intl.formatMessage({
+                id: 'dashboard.tableHeader.name',
+                defaultMessage: 'Name'
+              })
+            },
+            {
+              key: 'value',
+              header: intl.formatMessage({
+                id: 'dashboard.tableHeader.value',
+                defaultMessage: 'Value'
+              })
+            }
+          ]}
+          render={({
+            rows,
+            headers,
+            getHeaderProps,
+            getRowProps,
+            getTableProps
+          }) => (
+            <TableContainer title="Params" className="tkn--table">
+              <Table {...getTableProps()}>
+                <TableHead>
+                  <TableRow>
+                    {headers.map(header => (
+                      <TableHeader {...getHeaderProps({ header })}>
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map(row => (
+                    <TableRow {...getRowProps({ row })}>
+                      {row.cells.map(cell => (
+                        <TableCell key={cell.id}>{cell.value}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        />
 
-        <Tabs selected={0} aria-label="PipelineResource details">
-          <Tab
-            id={`${pipelineResourceName}-overview`}
-            label={intl.formatMessage({
-              id: 'dashboard.resource.overviewTab',
-              defaultMessage: 'Overview'
-            })}
-          >
-            <div className="details">
-              <div className="resource--detail-block">
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.metadata.dateCreated',
-                      defaultMessage: 'Date Created:'
-                    })}
-                  </span>
-                  <FormattedDate
-                    date={pipelineResource.metadata.creationTimestamp}
-                    relative
-                  />
-                </p>
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.metadata.labels',
-                      defaultMessage: 'Labels:'
-                    })}
-                  </span>
-                  {formattedLabelsToRender.length
-                    ? formattedLabelsToRender.map(label => (
-                        <Tag type="blue" key={label}>
-                          {label}
-                        </Tag>
-                      ))
-                    : intl.formatMessage({
-                        id: 'dashboard.metadata.none',
-                        defaultMessage: 'None'
-                      })}
-                </p>
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.metadata.namespace',
-                      defaultMessage: 'Namespace:'
-                    })}
-                  </span>
-                  {pipelineResource.metadata.namespace}
-                </p>
-                <p>
-                  <span>
-                    {intl.formatMessage({
-                      id: 'dashboard.pipelineResource.type',
-                      defaultMessage: 'Type:'
-                    })}
-                  </span>
-                  {type}
-                </p>
-              </div>
-
-              <DataTable
-                rows={params.map(({ name, value }) => ({
-                  id: name,
-                  name,
-                  value
-                }))}
-                headers={[
-                  {
-                    key: 'name',
-                    header: intl.formatMessage({
-                      id: 'dashboard.tableHeader.name',
-                      defaultMessage: 'Name'
-                    })
-                  },
-                  {
-                    key: 'value',
-                    header: intl.formatMessage({
-                      id: 'dashboard.tableHeader.value',
-                      defaultMessage: 'Value'
-                    })
-                  }
-                ]}
-                render={({
-                  rows,
-                  headers,
-                  getHeaderProps,
-                  getRowProps,
-                  getTableProps
-                }) => (
-                  <TableContainer title="Params">
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          {headers.map(header => (
-                            <TableHeader {...getHeaderProps({ header })}>
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {rows.map(row => (
-                          <TableRow {...getRowProps({ row })}>
-                            {row.cells.map(cell => (
-                              <TableCell key={cell.id}>{cell.value}</TableCell>
-                            ))}
-                          </TableRow>
+        {secrets && (
+          <DataTable
+            rows={secrets.map(({ fieldName, secretKey, secretName }) => ({
+              id: fieldName,
+              fieldName,
+              secretKey,
+              secretName
+            }))}
+            headers={[
+              {
+                key: 'fieldName',
+                header: intl.formatMessage({
+                  id: 'dashboard.pipelineResource.fieldName',
+                  defaultMessage: 'Field Name'
+                })
+              },
+              {
+                key: 'secretKey',
+                header: intl.formatMessage({
+                  id: 'dashboard.pipelineResource.secretKey',
+                  defaultMessage: 'Secret Key'
+                })
+              },
+              {
+                key: 'secretName',
+                header: intl.formatMessage({
+                  id: 'dashboard.pipelineResource.secretName',
+                  defaultMessage: 'Secret Name'
+                })
+              }
+            ]}
+            render={({
+              rows,
+              headers,
+              getHeaderProps,
+              getRowProps,
+              getTableProps
+            }) => (
+              <TableContainer title="Secrets" className="tkn--table">
+                <Table {...getTableProps()}>
+                  <TableHead>
+                    <TableRow>
+                      {headers.map(header => (
+                        <TableHeader {...getHeaderProps({ header })}>
+                          {header.header}
+                        </TableHeader>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map(row => (
+                      <TableRow {...getRowProps({ row })}>
+                        {row.cells.map(cell => (
+                          <TableCell key={cell.id}>{cell.value}</TableCell>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              />
-
-              {secrets && (
-                <DataTable
-                  rows={secrets.map(({ fieldName, secretKey, secretName }) => ({
-                    id: fieldName,
-                    fieldName,
-                    secretKey,
-                    secretName
-                  }))}
-                  headers={[
-                    {
-                      key: 'fieldName',
-                      header: intl.formatMessage({
-                        id: 'dashboard.pipelineResource.fieldName',
-                        defaultMessage: 'Field Name'
-                      })
-                    },
-                    {
-                      key: 'secretKey',
-                      header: intl.formatMessage({
-                        id: 'dashboard.pipelineResource.secretKey',
-                        defaultMessage: 'Secret Key'
-                      })
-                    },
-                    {
-                      key: 'secretName',
-                      header: intl.formatMessage({
-                        id: 'dashboard.pipelineResource.secretName',
-                        defaultMessage: 'Secret Name'
-                      })
-                    }
-                  ]}
-                  render={({
-                    rows,
-                    headers,
-                    getHeaderProps,
-                    getRowProps,
-                    getTableProps
-                  }) => (
-                    <TableContainer title="Secrets">
-                      <Table {...getTableProps()}>
-                        <TableHead>
-                          <TableRow>
-                            {headers.map(header => (
-                              <TableHeader {...getHeaderProps({ header })}>
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.map(row => (
-                            <TableRow {...getRowProps({ row })}>
-                              {row.cells.map(cell => (
-                                <TableCell key={cell.id}>
-                                  {cell.value}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  )}
-                />
-              )}
-            </div>
-          </Tab>
-          <Tab id={`${pipelineResourceName}-yaml`} label="YAML">
-            <ViewYAML resource={pipelineResource} />
-          </Tab>
-        </Tabs>
-      </>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          />
+        )}
+      </ResourceDetails>
     );
   }
 }
@@ -346,8 +233,11 @@ PipelineResourceContainer.propTypes = {
 
 /* istanbul ignore next */
 function mapStateToProps(state, ownProps) {
-  const { match } = ownProps;
+  const { location, match } = ownProps;
   const { namespace, pipelineResourceName: name } = match.params;
+
+  const queryParams = new URLSearchParams(location.search);
+  const view = queryParams.get('view');
 
   return {
     error: getPipelineResourcesErrorMessage(state),
@@ -357,6 +247,7 @@ function mapStateToProps(state, ownProps) {
       name,
       namespace
     }),
+    view,
     webSocketConnected: isWebSocketConnected(state)
   };
 }

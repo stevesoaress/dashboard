@@ -12,12 +12,11 @@ limitations under the License.
 */
 
 import React from 'react';
+import { Route } from 'react-router-dom';
 import { fireEvent, waitForElement } from 'react-testing-library';
-import 'jest-dom/extend-expect';
-import { Provider } from 'react-redux';
-import thunk from 'redux-thunk';
-import configureStore from 'redux-mock-store';
 import { createIntl } from 'react-intl';
+import { paths, urls } from '@tektoncd/dashboard-utils';
+
 import { ClusterTriggerBindingContainer } from './ClusterTriggerBinding';
 import { renderWithRouter } from '../../utils/test';
 
@@ -70,76 +69,17 @@ it('ClusterTriggerBindingContainer renders', async () => {
       clusterTriggerBindingName
     }
   };
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-  const testStore = mockStore({
-    clusterTriggerBindings: {
-      byId: {},
-      errorMessage: null,
-      isFetching: false
-    }
-  });
 
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ClusterTriggerBindingContainer
-        intl={intl}
-        match={match}
-        fetchClusterTriggerBinding={() => Promise.resolve()}
-        error={null}
-        loading={false}
-      />
-    </Provider>
+    <ClusterTriggerBindingContainer
+      intl={intl}
+      match={match}
+      fetchClusterTriggerBinding={() => Promise.resolve()}
+      error={null}
+      loading={false}
+    />
   );
-  await waitForElement(() => getByText(`ClusterTriggerBinding not available`));
-});
-
-it('ClusterTriggerBindingContainer toggles between tabs correctly', async () => {
-  const match = {
-    params: {
-      clusterTriggerBindingName: 'cluster-trigger-binding-simple'
-    }
-  };
-
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    clusterTriggerBindings: {
-      byId: 'cluster-trigger-binding-simple',
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
-  const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ClusterTriggerBindingContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchClusterTriggerBinding={() =>
-          Promise.resolve(clusterTriggerBindingSimple)
-        }
-        clusterTriggerBinding={clusterTriggerBindingSimple}
-      />
-    </Provider>
-  );
-
-  await waitForElement(() => getByText('cluster-trigger-binding-simple'));
-
-  await waitForElement(() => getByText('Date Created:'));
-  let yamlTab = getByText('YAML');
-  expect(yamlTab.parentNode.getAttribute('aria-selected')).toBe('false');
-
-  fireEvent.click(yamlTab);
-  await waitForElement(() => getByText(/creationTimestamp/i));
-  const overviewTab = getByText(/Overview/i);
-  expect(overviewTab.parentNode.getAttribute('aria-selected')).toBe('false');
-
-  fireEvent.click(overviewTab);
-  yamlTab = getByText('YAML');
-  expect(yamlTab.parentNode.getAttribute('aria-selected')).toBe('false');
+  await waitForElement(() => getByText('Error loading resource'));
 });
 
 it('ClusterTriggerBindingContainer handles error state', async () => {
@@ -149,31 +89,15 @@ it('ClusterTriggerBindingContainer handles error state', async () => {
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    namespaces: {
-      selected: 'default'
-    },
-    clusterTriggerBindings: {
-      byId: {},
-      errorMessage: 'Error',
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ClusterTriggerBindingContainer
-        intl={intl}
-        match={match}
-        error="Error"
-        fetchClusterTriggerBinding={() => Promise.resolve()}
-      />
-    </Provider>
+    <ClusterTriggerBindingContainer
+      intl={intl}
+      match={match}
+      error="Error"
+      fetchClusterTriggerBinding={() => Promise.resolve()}
+    />
   );
-  await waitForElement(() => getByText('Error loading ClusterTriggerBinding'));
+  await waitForElement(() => getByText('Error loading resource'));
 });
 
 it('ClusterTriggerBindingContainer renders overview', async () => {
@@ -183,29 +107,16 @@ it('ClusterTriggerBindingContainer renders overview', async () => {
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    triggerBindings: {
-      byId: 'cluster-trigger-binding-simple',
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ClusterTriggerBindingContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchClusterTriggerBinding={() =>
-          Promise.resolve(clusterTriggerBindingSimple)
-        }
-        clusterTriggerBinding={clusterTriggerBindingSimple}
-      />
-    </Provider>
+    <ClusterTriggerBindingContainer
+      intl={intl}
+      match={match}
+      error={null}
+      fetchClusterTriggerBinding={() =>
+        Promise.resolve(clusterTriggerBindingSimple)
+      }
+      clusterTriggerBinding={clusterTriggerBindingSimple}
+    />
   );
 
   await waitForElement(() => getByText('cluster-trigger-binding-simple'));
@@ -217,38 +128,31 @@ it('ClusterTriggerBindingContainer renders overview', async () => {
 });
 
 it('ClusterTriggerBindingContainer renders YAML', async () => {
-  const match = {
-    params: {
-      clusterTriggerBindingName: 'cluster-trigger-binding-simple'
-    }
-  };
-
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    clusterTriggerBindings: {
-      byId: 'cluster-trigger-binding-simple',
-      errorMessage: null,
-      isFetching: false
-    }
-  });
+  const clusterTriggerBindingName = 'cluster-trigger-binding-simple';
 
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ClusterTriggerBindingContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchClusterTriggerBinding={() =>
-          Promise.resolve(clusterTriggerBindingSimple)
-        }
-        clusterTriggerBinding={clusterTriggerBindingSimple}
-      />
-    </Provider>
+    <Route
+      path={paths.clusterTriggerBindings.byName()}
+      render={props => (
+        <ClusterTriggerBindingContainer
+          {...props}
+          intl={intl}
+          error={null}
+          fetchClusterTriggerBinding={() =>
+            Promise.resolve(clusterTriggerBindingSimple)
+          }
+          clusterTriggerBinding={clusterTriggerBindingSimple}
+        />
+      )}
+    />,
+    {
+      route: urls.clusterTriggerBindings.byName({
+        clusterTriggerBindingName
+      })
+    }
   );
 
-  await waitForElement(() => getByText('cluster-trigger-binding-simple'));
+  await waitForElement(() => getByText(clusterTriggerBindingName));
   const yamlTab = getByText('YAML');
   fireEvent.click(yamlTab);
   await waitForElement(() => getByText(/creationTimestamp/i));
@@ -265,29 +169,16 @@ it('ClusterTriggerBindingContainer does not render label section if they are not
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    clusterTriggerBindings: {
-      byId: 'cluster-trigger-binding-simple',
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ClusterTriggerBindingContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchClusterTriggerBinding={() =>
-          Promise.resolve(clusterTriggerBindingSimple)
-        }
-        clusterTriggerBinding={clusterTriggerBindingSimple}
-      />
-    </Provider>
+    <ClusterTriggerBindingContainer
+      intl={intl}
+      match={match}
+      error={null}
+      fetchClusterTriggerBinding={() =>
+        Promise.resolve(clusterTriggerBindingSimple)
+      }
+      clusterTriggerBinding={clusterTriggerBindingSimple}
+    />
   );
 
   await waitForElement(() => getByText('cluster-trigger-binding-simple'));
@@ -301,29 +192,16 @@ it('ClusterTriggerBindingContainer renders labels section if they are present', 
     }
   };
 
-  const middleware = [thunk];
-  const mockStore = configureStore(middleware);
-
-  const testStore = mockStore({
-    clusterTriggerBindings: {
-      byId: 'cluster-trigger-binding-labels',
-      errorMessage: null,
-      isFetching: false
-    }
-  });
-
   const { getByText } = renderWithRouter(
-    <Provider store={testStore}>
-      <ClusterTriggerBindingContainer
-        intl={intl}
-        match={match}
-        error={null}
-        fetchClusterTriggerBinding={() =>
-          Promise.resolve(clusterTriggerBindingWithLabels)
-        }
-        clusterTriggerBinding={clusterTriggerBindingWithLabels}
-      />
-    </Provider>
+    <ClusterTriggerBindingContainer
+      intl={intl}
+      match={match}
+      error={null}
+      fetchClusterTriggerBinding={() =>
+        Promise.resolve(clusterTriggerBindingWithLabels)
+      }
+      clusterTriggerBinding={clusterTriggerBindingWithLabels}
+    />
   );
 
   await waitForElement(() => getByText('cluster-trigger-binding-labels'));

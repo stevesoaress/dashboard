@@ -16,11 +16,10 @@ import {
   Form,
   FormGroup,
   InlineNotification,
-  Modal,
   TextInput
 } from 'carbon-components-react';
 import { ALL_NAMESPACES, generateId } from '@tektoncd/dashboard-utils';
-import { KeyValueList } from '@tektoncd/dashboard-components';
+import { KeyValueList, Modal } from '@tektoncd/dashboard-components';
 import { injectIntl } from 'react-intl';
 import {
   NamespacesDropdown,
@@ -33,12 +32,14 @@ import { createPipelineRun } from '../../api';
 import { getStore } from '../../store/index';
 import { isValidLabel } from '../../utils';
 
-import '../../scss/CreateRun.scss';
+import '../../scss/Create.scss';
 
 const initialState = {
   invalidLabels: {},
+  invalidNodeSelector: {},
   labels: [],
   namespace: '',
+  nodeSelector: [],
   paramSpecs: [],
   pipelineError: false,
   pipelineRef: '',
@@ -94,7 +95,10 @@ const initialResourcesState = resourceSpecs => {
 };
 
 class CreatePipelineRun extends React.Component {
-  state = initialState;
+  constructor(props) {
+    super(props);
+    this.state = this.initialState();
+  }
 
   componentDidUpdate(prevProps) {
     const { open, namespace } = this.props;
@@ -160,13 +164,30 @@ class CreatePipelineRun extends React.Component {
       });
     });
 
+    // Node selector
+    let validNodeSelector = true;
+    this.state.nodeSelector.forEach(label => {
+      ['key', 'value'].forEach(type => {
+        if (!isValidLabel(type, label[type])) {
+          validNodeSelector = false;
+          this.setState(prevState => ({
+            invalidNodeSelector: {
+              ...prevState.invalidNodeSelector,
+              [`${label.id}-${type}`]: true
+            }
+          }));
+        }
+      });
+    });
+
     return (
       validNamespace &&
       validPipelineRef &&
       validResources &&
       validParams &&
       timeoutTest &&
-      validLabels
+      validLabels &&
+      validNodeSelector
     );
   };
 
@@ -174,12 +195,12 @@ class CreatePipelineRun extends React.Component {
     this.props.onClose();
   };
 
-  handleAddLabel = () => {
+  handleAddLabel = prop => {
     this.setState(prevState => ({
-      labels: [
-        ...prevState.labels,
+      [prop]: [
+        ...prevState[prop],
         {
-          id: generateId(`label${prevState.labels.length}-`),
+          id: generateId(`label${prevState[prop].length}-`),
           key: '',
           keyPlaceholder: 'key',
           value: '',
@@ -189,31 +210,37 @@ class CreatePipelineRun extends React.Component {
     }));
   };
 
-  handleRemoveLabel = index => {
+  handleRemoveLabel = (prop, invalidProp, index) => {
     this.setState(prevState => {
-      const labels = [...prevState.labels];
-      const invalidLabels = { ...prevState.invalidLabels };
+      const labels = [...prevState[prop]];
+      const invalidLabels = { ...prevState[invalidProp] };
       const removedLabel = labels[index];
       labels.splice(index, 1);
       if (removedLabel.id in invalidLabels) {
         delete invalidLabels[`${removedLabel.id}-key`];
         delete invalidLabels[`${removedLabel.id}-value`];
       }
-      return { labels, invalidLabels };
+      return {
+        [prop]: labels,
+        [invalidProp]: invalidLabels
+      };
     });
   };
 
-  handleChangeLabel = ({ type, index, value }) => {
+  handleChangeLabel = (prop, invalidProp, { type, index, value }) => {
     this.setState(prevState => {
-      const labels = [...prevState.labels];
+      const labels = [...prevState[prop]];
       labels[index][type] = value;
-      const invalidLabels = { ...prevState.invalidLabels };
+      const invalidLabels = { ...prevState[invalidProp] };
       if (!isValidLabel(type, value)) {
         invalidLabels[`${labels[index].id}-${type}`] = true;
       } else {
         delete invalidLabels[`${labels[index].id}-${type}`];
       }
-      return { labels, invalidLabels };
+      return {
+        [prop]: labels,
+        [invalidProp]: invalidLabels
+      };
     });
   };
 
@@ -283,6 +310,7 @@ class CreatePipelineRun extends React.Component {
     const {
       labels,
       namespace,
+      nodeSelector,
       params,
       pipelineRef,
       resources,
@@ -300,7 +328,13 @@ class CreatePipelineRun extends React.Component {
       labels: labels.reduce((acc, { key, value }) => {
         acc[key] = value;
         return acc;
-      }, {})
+      }, {}),
+      nodeSelector: nodeSelector.length
+        ? nodeSelector.reduce((acc, { key, value }) => {
+            acc[key] = value;
+            return acc;
+          }, {})
+        : null
     })
       .then(response => {
         this.props.onSuccess(response);
@@ -343,8 +377,10 @@ class CreatePipelineRun extends React.Component {
     const { open, intl } = this.props;
     const {
       invalidLabels,
+      invalidNodeSelector,
       labels,
       namespace,
+      nodeSelector,
       paramSpecs,
       pipelineRef,
       resourceSpecs,
@@ -356,7 +392,7 @@ class CreatePipelineRun extends React.Component {
     return (
       <Form>
         <Modal
-          className="create-pipelinerun"
+          className="tkn--create"
           open={open}
           modalHeading={intl.formatMessage({
             id: 'dashboard.createPipelineRun.heading',
@@ -388,7 +424,7 @@ class CreatePipelineRun extends React.Component {
             <InlineNotification
               kind="error"
               title={intl.formatMessage({
-                id: 'dashboard.createPipelineRun.validationError',
+                id: 'dashboard.createRun.validationError',
                 defaultMessage:
                   'Please fix the fields with errors, then resubmit'
               })}
@@ -412,7 +448,7 @@ class CreatePipelineRun extends React.Component {
               id="create-pipelinerun--namespaces-dropdown"
               invalid={validationError && !namespace}
               invalidText={intl.formatMessage({
-                id: 'dashboard.createPipelineRun.invalidNamespace',
+                id: 'dashboard.createRun.invalidNamespace',
                 defaultMessage: 'Namespace cannot be empty'
               })}
               selectedItem={namespace ? { id: namespace, text: namespace } : ''}
@@ -436,7 +472,7 @@ class CreatePipelineRun extends React.Component {
           <FormGroup legendText="">
             <KeyValueList
               legendText={intl.formatMessage({
-                id: 'dashboard.createPipelineRun.labels.legendText',
+                id: 'dashboard.createRun.labels.legendText',
                 defaultMessage: 'Labels'
               })}
               invalidText={
@@ -444,7 +480,7 @@ class CreatePipelineRun extends React.Component {
                   dangerouslySetInnerHTML /* eslint-disable-line react/no-danger */={{
                     __html: intl.formatMessage(
                       {
-                        id: 'dashboard.createPipelineRun.labels.invalidText',
+                        id: 'dashboard.createRun.label.invalidText',
                         defaultMessage:
                           'Labels must follow the {0}kubernetes labels syntax{1}.'
                       },
@@ -463,9 +499,60 @@ class CreatePipelineRun extends React.Component {
               keyValues={labels}
               minKeyValues={0}
               invalidFields={invalidLabels}
-              onChange={this.handleChangeLabel}
-              onRemove={this.handleRemoveLabel}
-              onAdd={this.handleAddLabel}
+              onChange={label =>
+                this.handleChangeLabel('labels', 'invalidLabels', label)
+              }
+              onRemove={index =>
+                this.handleRemoveLabel('labels', 'invalidLabels', index)
+              }
+              onAdd={() => this.handleAddLabel('labels')}
+            />
+          </FormGroup>
+          <FormGroup legendText="">
+            <KeyValueList
+              legendText={intl.formatMessage({
+                id: 'dashboard.createRun.nodeSelector.legendText',
+                defaultMessage: 'Node Selector'
+              })}
+              invalidText={
+                <span
+                  dangerouslySetInnerHTML /* eslint-disable-line react/no-danger */={{
+                    __html: intl.formatMessage(
+                      {
+                        id: 'dashboard.createRun.label.invalidText',
+                        defaultMessage:
+                          'Labels must follow the {0}kubernetes labels syntax{1}.'
+                      },
+                      [
+                        `<a
+                            href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >`,
+                        '</a>'
+                      ]
+                    )
+                  }}
+                />
+              }
+              keyValues={nodeSelector}
+              minKeyValues={0}
+              invalidFields={invalidNodeSelector}
+              onChange={label =>
+                this.handleChangeLabel(
+                  'nodeSelector',
+                  'invalidNodeSelector',
+                  label
+                )
+              }
+              onRemove={index =>
+                this.handleRemoveLabel(
+                  'nodeSelector',
+                  'invalidNodeSelector',
+                  index
+                )
+              }
+              onAdd={() => this.handleAddLabel('nodeSelector')}
             />
           </FormGroup>
           {resourceSpecs && resourceSpecs.length !== 0 && (
@@ -482,7 +569,7 @@ class CreatePipelineRun extends React.Component {
                     validationError && !this.state.resources[resourceSpec.name]
                   }
                   invalidText={intl.formatMessage({
-                    id: 'dashboard.createPipelineRun.invalidPipelineResources',
+                    id: 'dashboard.createRun.invalidPipelineResources',
                     defaultMessage: 'PipelineResources cannot be empty'
                   })}
                   selectedItem={(() => {
@@ -510,7 +597,7 @@ class CreatePipelineRun extends React.Component {
                     validationError && !this.state.params[paramSpec.name]
                   }
                   invalidText={intl.formatMessage({
-                    id: 'dashboard.createPipelineRun.invalidParams',
+                    id: 'dashboard.createRun.invalidParams',
                     defaultMessage: 'Params cannot be empty'
                   })}
                   value={this.state.params[paramSpec.name] || ''}
@@ -523,15 +610,20 @@ class CreatePipelineRun extends React.Component {
           )}
           <FormGroup
             legendText={intl.formatMessage({
-              id: 'dashboard.createPipelineRun.optional.legendText',
+              id: 'dashboard.createRun.optional.legendText',
               defaultMessage: 'Optional values'
             })}
           >
             <ServiceAccountsDropdown
               id="create-pipelinerun--sa-dropdown"
               titleText={intl.formatMessage({
-                id: 'dashboard.createPipelineRun.serviceAccountLabel',
+                id: 'dashboard.serviceAccountLabel.optional',
                 defaultMessage: 'ServiceAccount (optional)'
+              })}
+              helperText={intl.formatMessage({
+                id: 'dashboard.createPipelineRun.serviceAccountHelperText',
+                defaultMessage:
+                  'Ensure the selected ServiceAccount (or the default if none selected) has permissions for creating PipelineRuns and for anything else your PipelineRun interacts with.'
               })}
               namespace={namespace}
               selectedItem={
@@ -548,7 +640,7 @@ class CreatePipelineRun extends React.Component {
             <TextInput
               id="create-pipelinerun--timeout"
               labelText={intl.formatMessage({
-                id: 'dashboard.createPipelineRun.timeoutLabel',
+                id: 'dashboard.createRun.timeoutLabel',
                 defaultMessage: 'Timeout'
               })}
               helperText={intl.formatMessage({
@@ -557,7 +649,7 @@ class CreatePipelineRun extends React.Component {
               })}
               invalid={validationError && !validTimeout}
               invalidText={intl.formatMessage({
-                id: 'dashboard.createPipelineRun.invalidTimeout',
+                id: 'dashboard.createRun.invalidTimeout',
                 defaultMessage:
                   'Timeout must be a valid number less than 525600'
               })}

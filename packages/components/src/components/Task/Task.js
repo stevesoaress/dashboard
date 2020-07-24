@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -30,11 +30,7 @@ class Task extends Component {
     this.selectDefaultStep();
   }
 
-  handleClick = event => {
-    if (event) {
-      event.preventDefault();
-    }
-
+  handleClick = () => {
     const { id } = this.props;
     const { selectedStepId } = this.state;
     this.props.onSelect(id, selectedStepId);
@@ -47,17 +43,17 @@ class Task extends Component {
   };
 
   handleTaskSelected = event => {
-    if (event) {
-      event.preventDefault();
-    }
+    event?.preventDefault(); // eslint-disable-line no-unused-expressions
     this.setState({ selectedStepId: null }, () => {
       this.handleClick();
     });
   };
 
   selectDefaultStep() {
-    const { expanded, steps } = this.props;
-    const { selectedStepId } = this.state;
+    const { expanded, selectDefaultStep, selectedStepId, steps } = this.props;
+    if (!selectDefaultStep) {
+      return;
+    }
     if (expanded && !selectedStepId) {
       const erroredStep = steps.find(
         step => step.reason === 'Error' || step.reason === undefined
@@ -71,7 +67,7 @@ class Task extends Component {
     const { reason, succeeded } = this.props;
 
     if (succeeded === 'Unknown' && reason === 'Running') {
-      return <Spinner className="task-icon" />;
+      return <Spinner className="tkn--task-icon" />;
     }
 
     let Icon = ChevronRight;
@@ -81,22 +77,29 @@ class Task extends Component {
       Icon = CloseFilled;
     }
 
-    return <Icon className="task-icon" />;
+    return <Icon className="tkn--task-icon" />;
   }
 
   render() {
-    const { expanded, reason, succeeded, steps, pipelineTaskName } = this.props;
-    const { selectedStepId } = this.state;
+    const {
+      expanded,
+      pipelineTaskName,
+      reason,
+      selectedStepId,
+      steps,
+      succeeded
+    } = this.props;
     const icon = this.icon();
+
     return (
       <li
-        className="task"
+        className="tkn--task"
         data-succeeded={succeeded}
         data-reason={reason}
         data-selected={(expanded && !selectedStepId) || undefined}
       >
         <a
-          className="task-link"
+          className="tkn--task-link"
           href="#"
           title={pipelineTaskName}
           onClick={this.handleTaskSelected}
@@ -105,7 +108,7 @@ class Task extends Component {
           {pipelineTaskName}
         </a>
         {expanded && (
-          <ol className="step-list">
+          <ol className="tkn--step-list">
             {updateUnexecutedSteps(steps).map(
               ({ id, reason: stepReason, status, stepName }) => {
                 const selected = selectedStepId === id;

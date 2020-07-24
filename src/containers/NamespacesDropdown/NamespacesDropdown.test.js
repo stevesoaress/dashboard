@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -39,7 +39,8 @@ it('NamespacesDropdown renders items based on Redux state', () => {
     namespaces: {
       byName,
       isFetching: false
-    }
+    },
+    properties: {}
   });
   const { getAllByText, getByPlaceholderText, queryByText } = renderWithIntl(
     <Provider store={store}>
@@ -60,7 +61,8 @@ it('NamespacesDropdown renders controlled selection', () => {
     namespaces: {
       byName,
       isFetching: false
-    }
+    },
+    properties: {}
   });
   // Select item 'namespace-1'
   const { container, queryByPlaceholderText, queryByValue } = renderWithIntl(
@@ -92,7 +94,8 @@ it('NamespacesDropdown renders empty', () => {
     namespaces: {
       byName: {},
       isFetching: false
-    }
+    },
+    properties: {}
   });
 
   const { queryByPlaceholderText } = renderWithIntl(
@@ -108,7 +111,8 @@ it('NamespacesDropdown renders loading skeleton based on Redux state', () => {
     namespaces: {
       byName,
       isFetching: true
-    }
+    },
+    properties: {}
   });
 
   const { queryByPlaceholderText } = renderWithIntl(
@@ -124,7 +128,8 @@ it('NamespacesDropdown handles onChange event', () => {
     namespaces: {
       byName,
       isFetching: false
-    }
+    },
+    properties: {}
   });
   const onChange = jest.fn();
   const { getByPlaceholderText, getByText } = renderWithIntl(
@@ -135,4 +140,22 @@ it('NamespacesDropdown handles onChange event', () => {
   fireEvent.click(getByPlaceholderText(initialTextRegExp));
   fireEvent.click(getByText(/namespace-1/i));
   expect(onChange).toHaveBeenCalledTimes(1);
+});
+
+it('NamespacesDropdown renders tenant namespace in single namespace mode', () => {
+  const store = mockStore({
+    namespaces: {
+      byName: {}
+    },
+    properties: {
+      TenantNamespace: 'fake'
+    }
+  });
+  const { getByPlaceholderText, getByText } = renderWithIntl(
+    <Provider store={store}>
+      <NamespacesDropdown {...props} />
+    </Provider>
+  );
+  fireEvent.click(getByPlaceholderText(initialTextRegExp));
+  expect(getByText(/fake/i)).toBeTruthy();
 });

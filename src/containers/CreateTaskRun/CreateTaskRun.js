@@ -17,11 +17,14 @@ import {
   Form,
   FormGroup,
   InlineNotification,
-  Modal,
   TextInput
 } from 'carbon-components-react';
-import { ALL_NAMESPACES, generateId } from '@tektoncd/dashboard-utils';
-import { KeyValueList } from '@tektoncd/dashboard-components';
+import {
+  ALL_NAMESPACES,
+  generateId,
+  getTranslateWithId
+} from '@tektoncd/dashboard-utils';
+import { KeyValueList, Modal } from '@tektoncd/dashboard-components';
 import { injectIntl } from 'react-intl';
 import {
   ClusterTasksDropdown,
@@ -35,7 +38,7 @@ import { createTaskRun } from '../../api';
 import { getStore } from '../../store/index';
 import { isValidLabel } from '../../utils';
 
-import '../../scss/CreateRun.scss';
+import '../../scss/Create.scss';
 
 const parseTaskInfo = (taskRef, kind, namespace) => {
   const state = getStore().getState();
@@ -54,9 +57,11 @@ const parseTaskInfo = (taskRef, kind, namespace) => {
 
 const initialState = {
   invalidLabels: {},
+  invalidNodeSelector: {},
   kind: 'Task',
   labels: [],
   namespace: '',
+  nodeSelector: [],
   paramSpecs: [],
   resourceSpecs: [],
   serviceAccount: '',
@@ -104,7 +109,10 @@ const initialResourcesState = resourceSpecs => {
 const itemToString = item => (item ? item.text : '');
 
 class CreateTaskRun extends React.Component {
-  state = initialState;
+  constructor(props) {
+    super(props);
+    this.state = this.initialState();
+  }
 
   componentDidUpdate(prevProps) {
     const { namespace, open } = this.props;
@@ -119,6 +127,7 @@ class CreateTaskRun extends React.Component {
     const {
       labels,
       namespace,
+      nodeSelector,
       params,
       resources,
       taskRef,
@@ -127,10 +136,18 @@ class CreateTaskRun extends React.Component {
     // Namespace, PipelineRef, Resources, and Params must all have values
     const validNamespace = !!namespace;
     const validTaskRef = !!taskRef;
-    const validResources =
+    const validInputResources =
       !resources ||
-      Object.keys(resources).reduce(
-        (acc, name) => acc && !!resources[name],
+      !resources.inputs ||
+      Object.keys(resources.inputs).reduce(
+        (acc, name) => acc && !!resources.inputs[name],
+        true
+      );
+    const validOutputResources =
+      !resources ||
+      !resources.outputs ||
+      Object.keys(resources.outputs).reduce(
+        (acc, name) => acc && !!resources.outputs[name],
         true
       );
     const validParams =
@@ -158,13 +175,31 @@ class CreateTaskRun extends React.Component {
       });
     });
 
+    // Node selector
+    let validNodeSelector = true;
+    nodeSelector.forEach(label => {
+      ['key', 'value'].forEach(type => {
+        if (!isValidLabel(type, label[type])) {
+          validNodeSelector = false;
+          this.setState(prevState => ({
+            invalidNodeSelector: {
+              ...prevState.invalidNodeSelector,
+              [`${label.id}-${type}`]: true
+            }
+          }));
+        }
+      });
+    });
+
     return (
       validNamespace &&
       validTaskRef &&
-      validResources &&
+      validInputResources &&
+      validOutputResources &&
       validParams &&
       validTimeout &&
-      validLabels
+      validLabels &&
+      validNodeSelector
     );
   };
 
@@ -172,12 +207,12 @@ class CreateTaskRun extends React.Component {
     this.props.onClose();
   };
 
-  handleAddLabel = () => {
+  handleAddLabel = prop => {
     this.setState(prevState => ({
-      labels: [
-        ...prevState.labels,
+      [prop]: [
+        ...prevState[prop],
         {
-          id: generateId(`label${prevState.labels.length}-`),
+          id: generateId(`label${prevState[prop].length}-`),
           key: '',
           keyPlaceholder: 'key',
           value: '',
@@ -187,31 +222,37 @@ class CreateTaskRun extends React.Component {
     }));
   };
 
-  handleRemoveLabel = index => {
+  handleRemoveLabel = (prop, invalidProp, index) => {
     this.setState(prevState => {
-      const labels = [...prevState.labels];
-      const invalidLabels = { ...prevState.invalidLabels };
+      const labels = [...prevState[prop]];
+      const invalidLabels = { ...prevState[invalidProp] };
       const removedLabel = labels[index];
       labels.splice(index, 1);
       if (removedLabel.id in invalidLabels) {
         delete invalidLabels[`${removedLabel.id}-key`];
         delete invalidLabels[`${removedLabel.id}-value`];
       }
-      return { labels, invalidLabels };
+      return {
+        [prop]: labels,
+        [invalidProp]: invalidLabels
+      };
     });
   };
 
-  handleChangeLabel = ({ type, index, value }) => {
+  handleChangeLabel = (prop, invalidProp, { type, index, value }) => {
     this.setState(prevState => {
-      const labels = [...prevState.labels];
+      const labels = [...prevState[prop]];
       labels[index][type] = value;
-      const invalidLabels = { ...prevState.invalidLabels };
+      const invalidLabels = { ...prevState[invalidProp] };
       if (!isValidLabel(type, value)) {
         invalidLabels[`${labels[index].id}-${type}`] = true;
       } else {
         delete invalidLabels[`${labels[index].id}-${type}`];
       }
-      return { labels, invalidLabels };
+      return {
+        [prop]: labels,
+        [invalidProp]: invalidLabels
+      };
     });
   };
 
@@ -286,6 +327,7 @@ class CreateTaskRun extends React.Component {
 
     const {
       namespace,
+      nodeSelector,
       params,
       resources,
       serviceAccount,
@@ -306,7 +348,13 @@ class CreateTaskRun extends React.Component {
       labels: labels.reduce((acc, { key, value }) => {
         acc[key] = value;
         return acc;
-      }, {})
+      }, {}),
+      nodeSelector: nodeSelector.length
+        ? nodeSelector.reduce((acc, { key, value }) => {
+            acc[key] = value;
+            return acc;
+          }, {})
+        : null
     })
       .then(response => {
         this.props.onSuccess(response);
@@ -324,8 +372,12 @@ class CreateTaskRun extends React.Component {
   };
 
   initialState = () => {
-    const { kind, namespace, taskRef } = this.props;
+    const { kind, namespace } = this.props;
+    let { taskRef } = this.props;
     const taskInfo = parseTaskInfo(taskRef, kind, namespace);
+    if (taskInfo.taskError) {
+      taskRef = '';
+    }
     return {
       ...initialState,
       ...taskInfo,
@@ -333,7 +385,8 @@ class CreateTaskRun extends React.Component {
       namespace: namespace !== ALL_NAMESPACES ? namespace : '',
       taskRef: taskRef || '',
       params: initialParamsState(taskInfo.paramSpecs),
-      resources: initialResourcesState(taskInfo.resourceSpecs)
+      resources: initialResourcesState(taskInfo.resourceSpecs),
+      taskError: ''
     };
   };
 
@@ -345,9 +398,11 @@ class CreateTaskRun extends React.Component {
     const { open, intl } = this.props;
     const {
       invalidLabels,
+      invalidNodeSelector,
       kind,
       labels,
       namespace,
+      nodeSelector,
       params,
       paramSpecs,
       resources,
@@ -364,7 +419,7 @@ class CreateTaskRun extends React.Component {
     return (
       <Form>
         <Modal
-          className="create-taskrun"
+          className="tkn--create"
           open={open}
           modalHeading={intl.formatMessage({
             id: 'dashboard.createTaskRun.heading',
@@ -396,7 +451,7 @@ class CreateTaskRun extends React.Component {
             <InlineNotification
               kind="error"
               title={intl.formatMessage({
-                id: 'dashboard.createTaskRun.validationError',
+                id: 'dashboard.createRun.validationError',
                 defaultMessage:
                   'Please fix the fields with errors, then resubmit'
               })}
@@ -427,12 +482,13 @@ class CreateTaskRun extends React.Component {
               ]}
               itemToString={itemToString}
               onChange={this.handleKindChange}
+              translateWithId={getTranslateWithId(intl)}
             />
             <NamespacesDropdown
               id="create-taskrun--namespaces-dropdown"
               invalid={validationError && !namespace}
               invalidText={intl.formatMessage({
-                id: 'dashboard.createTaskRun.invalidNamespace',
+                id: 'dashboard.createRun.invalidNamespace',
                 defaultMessage: 'Namespace cannot be empty'
               })}
               selectedItem={namespace ? { id: namespace, text: namespace } : ''}
@@ -469,7 +525,7 @@ class CreateTaskRun extends React.Component {
           <FormGroup legendText="">
             <KeyValueList
               legendText={intl.formatMessage({
-                id: 'dashboard.createTaskRun.labels.legendText',
+                id: 'dashboard.createRun.labels.legendText',
                 defaultMessage: 'Labels'
               })}
               invalidText={
@@ -477,7 +533,7 @@ class CreateTaskRun extends React.Component {
                   dangerouslySetInnerHTML /* eslint-disable-line react/no-danger */={{
                     __html: intl.formatMessage(
                       {
-                        id: 'dashboard.createTaskRun.labels.invalidText',
+                        id: 'dashboard.createRun.label.invalidText',
                         defaultMessage:
                           'Labels must follow the {0}kubernetes labels syntax{1}.'
                       },
@@ -496,9 +552,60 @@ class CreateTaskRun extends React.Component {
               keyValues={labels}
               minKeyValues={0}
               invalidFields={invalidLabels}
-              onChange={this.handleChangeLabel}
-              onRemove={this.handleRemoveLabel}
-              onAdd={this.handleAddLabel}
+              onChange={label =>
+                this.handleChangeLabel('labels', 'invalidLabels', label)
+              }
+              onRemove={index =>
+                this.handleRemoveLabel('labels', 'invalidLabels', index)
+              }
+              onAdd={() => this.handleAddLabel('labels')}
+            />
+          </FormGroup>
+          <FormGroup legendText="">
+            <KeyValueList
+              legendText={intl.formatMessage({
+                id: 'dashboard.createRun.nodeSelector.legendText',
+                defaultMessage: 'Node Selector'
+              })}
+              invalidText={
+                <span
+                  dangerouslySetInnerHTML /* eslint-disable-line react/no-danger */={{
+                    __html: intl.formatMessage(
+                      {
+                        id: 'dashboard.createRun.label.invalidText',
+                        defaultMessage:
+                          'Labels must follow the {0}kubernetes labels syntax{1}.'
+                      },
+                      [
+                        `<a
+                            href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >`,
+                        '</a>'
+                      ]
+                    )
+                  }}
+                />
+              }
+              keyValues={nodeSelector}
+              minKeyValues={0}
+              invalidFields={invalidNodeSelector}
+              onChange={label =>
+                this.handleChangeLabel(
+                  'nodeSelector',
+                  'invalidNodeSelector',
+                  label
+                )
+              }
+              onRemove={index =>
+                this.handleRemoveLabel(
+                  'nodeSelector',
+                  'invalidNodeSelector',
+                  index
+                )
+              }
+              onAdd={() => this.handleAddLabel('nodeSelector')}
             />
           </FormGroup>
           {resourceSpecs?.inputs?.length > 0 && (
@@ -513,7 +620,7 @@ class CreateTaskRun extends React.Component {
                   namespace={namespace}
                   invalid={validationError && !resources.inputs[spec.name]}
                   invalidText={intl.formatMessage({
-                    id: 'dashboard.createTaskRun.invalidPipelineResources',
+                    id: 'dashboard.createRun.invalidPipelineResources',
                     defaultMessage: 'PipelineResources cannot be empty'
                   })}
                   selectedItem={(() => {
@@ -543,7 +650,7 @@ class CreateTaskRun extends React.Component {
                   namespace={namespace}
                   invalid={validationError && !resources.outputs[spec.name]}
                   invalidText={intl.formatMessage({
-                    id: 'dashboard.createTaskRun.invalidPipelineResources',
+                    id: 'dashboard.createRun.invalidPipelineResources',
                     defaultMessage: 'PipelineResources cannot be empty'
                   })}
                   selectedItem={(() => {
@@ -572,7 +679,7 @@ class CreateTaskRun extends React.Component {
                   placeholder={paramSpec.default || paramSpec.name}
                   invalid={validationError && !params[paramSpec.name]}
                   invalidText={intl.formatMessage({
-                    id: 'dashboard.createTaskRun.invalidParams',
+                    id: 'dashboard.createRun.invalidParams',
                     defaultMessage: 'Params cannot be empty'
                   })}
                   value={params[paramSpec.name] || ''}
@@ -585,15 +692,20 @@ class CreateTaskRun extends React.Component {
           )}
           <FormGroup
             legendText={intl.formatMessage({
-              id: 'dashboard.createTaskRun.optional.legendText',
+              id: 'dashboard.createRun.optional.legendText',
               defaultMessage: 'Optional values'
             })}
           >
             <ServiceAccountsDropdown
               id="create-taskrun--sa-dropdown"
               titleText={intl.formatMessage({
-                id: 'dashboard.createTaskRun.serviceAccountLabel',
+                id: 'dashboard.serviceAccountLabel.optional',
                 defaultMessage: 'ServiceAccount (optional)'
+              })}
+              helperText={intl.formatMessage({
+                id: 'dashboard.createTaskRun.serviceAccountHelperText',
+                defaultMessage:
+                  'Ensure the selected ServiceAccount (or the default if none selected) has permissions for creating TaskRuns and for anything else your TaskRun interacts with.'
               })}
               namespace={namespace}
               selectedItem={
@@ -610,7 +722,7 @@ class CreateTaskRun extends React.Component {
             <TextInput
               id="create-taskrun--timeout"
               labelText={intl.formatMessage({
-                id: 'dashboard.createTaskRun.timeoutLabel',
+                id: 'dashboard.createRun.timeoutLabel',
                 defaultMessage: 'Timeout'
               })}
               helperText={intl.formatMessage({
@@ -619,7 +731,7 @@ class CreateTaskRun extends React.Component {
               })}
               invalid={validationError && !validTimeout}
               invalidText={intl.formatMessage({
-                id: 'dashboard.createTaskRun.invalidTimeout',
+                id: 'dashboard.createRun.invalidTimeout',
                 defaultMessage:
                   'Timeout must be a valid number less than 525600'
               })}
