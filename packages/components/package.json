@@ -20,8 +20,7 @@
     "js-yaml": "^3.13.0",
     "linkify-it": "^3.0.2",
     "prop-types": "^15.7.2",
-    "react-intl-formatted-duration": "^3.1.0",
-    "react-linkify": "^1.0.0-alpha",
+    "react-intl-formatted-duration": "^4.0.0",
     "react-window": "^1.8.5"
   },
   "peerDependencies": {
@@ -40,8 +39,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "devDependencies": {},
-  "sideEffects": [
-    "*.scss"
-  ]
+  "sideEffects": ["*.scss"]
 }
