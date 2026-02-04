@@ -186,3 +186,196 @@ export const LogLevelsAndTimestamps = {
     ]
   }
 };
+
+export const CollapsibleSections = {
+  args: {
+    fields: {
+      timestamp: true
+    },
+    logs: [
+      {
+        timestamp: '2024-11-14T14:10:53.354144861Z',
+        message: 'Starting build process'
+      },
+      {
+        timestamp: '2024-11-14T14:10:54.354144861Z',
+        message: '\x1b[0Ksection_start:1700000001:prepare_env\r\x1b[0KPreparing Environment'
+      },
+      {
+        timestamp: '2024-11-14T14:10:55.354144861Z',
+        message: 'Installing dependencies...'
+      },
+      {
+        timestamp: '2024-11-14T14:10:56.354144861Z',
+        message: 'npm install completed'
+      },
+      {
+        timestamp: '2024-11-14T14:10:57.354144861Z',
+        message: '\x1b[0Ksection_end:1700000001:prepare_env\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T14:10:58.354144861Z',
+        message: '\x1b[0Ksection_start:1700000002:build\r\x1b[0KBuilding Application'
+      },
+      {
+        timestamp: '2024-11-14T14:10:59.354144861Z',
+        message: 'Compiling source files...'
+      },
+      {
+        timestamp: '2024-11-14T14:11:00.354144861Z',
+        message: '\x1b[32mBuild successful!\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T14:11:01.354144861Z',
+        message: '\x1b[0Ksection_end:1700000002:build\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T14:11:02.354144861Z',
+        message: '\x1b[0Ksection_start:1700000003:tests\r\x1b[0KRunning Tests'
+      },
+      {
+        timestamp: '2024-11-14T14:11:03.354144861Z',
+        message: 'Test suite started'
+      },
+      {
+        timestamp: '2024-11-14T14:11:04.354144861Z',
+        message: '✓ Unit tests passed (45/45)'
+      },
+      {
+        timestamp: '2024-11-14T14:11:05.354144861Z',
+        message: '✓ Integration tests passed (12/12)'
+      },
+      {
+        timestamp: '2024-11-14T14:11:06.354144861Z',
+        message: '\x1b[0Ksection_end:1700000003:tests\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T14:11:07.354144861Z',
+        message: '\x1b[32mAll tasks completed successfully!\x1b[0m'
+      }
+    ]
+  }
+};
+
+export const CollapsibleSectionWithLogLevels = {
+  args: {
+    fields: {
+      timestamp: true,
+      level: true
+    },
+    logs: [
+      {
+        timestamp: '2024-11-14T14:10:53.354144861Z',
+        level: 'info',
+        message: 'Starting deployment process'
+      },
+      {
+        timestamp: '2024-11-14T14:10:54.354144861Z',
+        message: '\x1b[0Ksection_start:1700000001:warnings\r\x1b[0K\x1b[33m⚠️  Warnings\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T14:10:55.354144861Z',
+        level: 'warning',
+        message: '::warning::Deprecated API usage detected in module auth.js'
+      },
+      {
+        timestamp: '2024-11-14T14:10:56.354144861Z',
+        level: 'warning',
+        message: '::warning::Missing environment variable DATABASE_URL, using default'
+      },
+      {
+        timestamp: '2024-11-14T14:10:57.354144861Z',
+        level: 'warning',
+        message: '::warning::Package lodash@4.17.20 has known vulnerabilities'
+      },
+      {
+        timestamp: '2024-11-14T14:10:58.354144861Z',
+        message: '\x1b[0Ksection_end:1700000001:warnings\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T14:10:59.354144861Z',
+        message: '\x1b[0Ksection_start:1700000002:debug\r\x1b[0K\x1b[35m🔍 Debug Information\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T14:11:00.354144861Z',
+        level: 'debug',
+        message: 'Loading configuration from /etc/app/config.yaml'
+      },
+      {
+        timestamp: '2024-11-14T14:11:01.354144861Z',
+        level: 'debug',
+        message: 'Initializing database connection pool (size: 10)'
+      },
+      {
+        timestamp: '2024-11-14T14:11:02.354144861Z',
+        level: 'debug',
+        message: 'Registering 15 API routes'
+      },
+      {
+        timestamp: '2024-11-14T14:11:03.354144861Z',
+        level: 'debug',
+        message: 'Cache warming completed in 234ms'
+      },
+      {
+        timestamp: '2024-11-14T14:11:04.354144861Z',
+        message: '\x1b[0Ksection_end:1700000002:debug\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T14:11:05.354144861Z',
+        message: '\x1b[0Ksection_start:1700000003:info\r\x1b[0K\x1b[36mℹ️  Build Process\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T14:11:06.354144861Z',
+        level: 'info',
+        message: 'Compiling TypeScript files...'
+      },
+      {
+        timestamp: '2024-11-14T14:11:07.354144861Z',
+        level: 'info',
+        message: 'Bundling assets with webpack'
+      },
+      {
+        timestamp: '2024-11-14T14:11:08.354144861Z',
+        level: 'info',
+        message: 'Optimizing images (12 files)'
+      },
+      {
+        timestamp: '2024-11-14T14:11:09.354144861Z',
+        level: 'info',
+        message: '\x1b[32mBuild completed successfully!\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T14:11:10.354144861Z',
+        message: '\x1b[0Ksection_end:1700000003:info\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T14:11:11.354144861Z',
+        message: '\x1b[0Ksection_start:1700000004:errors\r\x1b[0K\x1b[31m❌ Errors\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T14:11:12.354144861Z',
+        level: 'error',
+        message: '::error::Failed to connect to Redis at localhost:6379'
+      },
+      {
+        timestamp: '2024-11-14T14:11:13.354144861Z',
+        level: 'error',
+        message: '::error::Database migration failed: duplicate key violation'
+      },
+      {
+        timestamp: '2024-11-14T14:11:14.354144861Z',
+        level: 'error',
+        message: '::error::Authentication service unavailable (timeout after 30s)'
+      },
+      {
+        timestamp: '2024-11-14T14:11:15.354144861Z',
+        message: '\x1b[0Ksection_end:1700000004:errors\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T14:11:16.354144861Z',
+        level: 'info',
+        message: '\x1b[33m⚠️  Deployment completed with errors\x1b[0m'
+      }
+    ]
+  }
+};

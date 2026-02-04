@@ -375,4 +375,88 @@ describe('LogFormat', () => {
     rerender(<LogFormat fields={{ level: true }} logs={logs} />);
     expect(queryByText('debug')).toBeTruthy();
   });
+
+  it('handles collapsible sections with section markers', () => {
+    const logs = [
+      { message: 'Before section' },
+      {
+        message:
+          '\x1b[0Ksection_start:1700000001:test_section\r\x1b[0KTest Section Header'
+      },
+      { message: 'Line inside section' },
+      { message: 'Another line inside section' },
+      { message: '\x1b[0Ksection_end:1700000001:test_section\r\x1b[0K' },
+      { message: 'After section' }
+    ];
+    const { container, queryByText } = render(<LogFormat logs={logs} />);
+
+    // Check that section markers are not rendered as visible content
+    expect(queryByText(/section_start/)).toBeFalsy();
+    expect(queryByText(/section_end/)).toBeFalsy();
+
+    // Check that section header is rendered
+    expect(queryByText('Test Section Header')).toBeTruthy();
+
+    // Check that content before and after section is rendered
+    expect(queryByText('Before section')).toBeTruthy();
+    expect(queryByText('After section')).toBeTruthy();
+
+    // Check that section content is rendered
+    expect(queryByText('Line inside section')).toBeTruthy();
+    expect(queryByText('Another line inside section')).toBeTruthy();
+
+    // Check for details element (collapsible section)
+    const details = container.querySelector('details.tkn--log-section');
+    expect(details).toBeTruthy();
+  });
+
+  it('handles multiple collapsible sections', () => {
+    const logs = [
+      {
+        message:
+          '\x1b[0Ksection_start:1700000001:section1\r\x1b[0KFirst Section'
+      },
+      { message: 'Content in first section' },
+      { message: '\x1b[0Ksection_end:1700000001:section1\r\x1b[0K' },
+      {
+        message:
+          '\x1b[0Ksection_start:1700000002:section2\r\x1b[0KSecond Section'
+      },
+      { message: 'Content in second section' },
+      { message: '\x1b[0Ksection_end:1700000002:section2\r\x1b[0K' }
+    ];
+    const { container, queryByText } = render(<LogFormat logs={logs} />);
+
+    expect(queryByText('First Section')).toBeTruthy();
+    expect(queryByText('Content in first section')).toBeTruthy();
+    expect(queryByText('Content in second section')).toBeTruthy();
+
+    const details = container.querySelectorAll('details.tkn--log-section');
+    expect(details.length).toBe(2);
+
+    // Verify both section headers are present
+    const summaries = container.querySelectorAll('details.tkn--log-section summary');
+    expect(summaries.length).toBe(2);
+    expect(summaries[0].textContent).toContain('First Section');
+    expect(summaries[1].textContent).toContain('Second Section');
+  });
+
+  it('handles sections with ANSI color codes', () => {
+    const logs = [
+      {
+        message:
+          '\x1b[0Ksection_start:1700000001:colored\r\x1b[0K\x1b[32mGreen Section\x1b[0m'
+      },
+      { message: '\x1b[31mRed text inside section\x1b[0m' },
+      { message: '\x1b[0Ksection_end:1700000001:colored\r\x1b[0K' }
+    ];
+    const { queryByText } = render(<LogFormat logs={logs} />);
+
+    const greenHeader = queryByText('Green Section');
+    expect(greenHeader).toBeTruthy();
+
+    const redText = queryByText('Red text inside section');
+    expect(redText).toBeTruthy();
+    expect(redText.outerHTML).toContain('tkn--ansi--color-fg--red');
+  });
 });

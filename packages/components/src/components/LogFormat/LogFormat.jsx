@@ -24,6 +24,11 @@ const linkifyIt = LinkifyIt().tlds(tlds);
 // eslint-disable-next-line no-control-regex
 const ansiRegex = /^\u001b([@-_])(.*?)([@-~])/;
 const characterRegex = /[^]/m;
+// Collapsible section markers
+// Section start: \e[0Ksection_start:UNIX_TIMESTAMP:SECTION_NAME\r\e[0K
+// Section end: \e[0Ksection_end:UNIX_TIMESTAMP:SECTION_NAME\r\e[0K
+const sectionStartRegex = /\x1b\[0Ksection_start:(\d+):([^\r]+)\r\x1b\[0K(.*)$/;
+const sectionEndRegex = /\x1b\[0Ksection_end:(\d+):([^\r]+)\r\x1b\[0K/;
 
 const getDecoratedLevel = level => {
   if (!level) {
@@ -113,6 +118,10 @@ const LogFormat = ({
   let styles = {};
   let text = '';
   let line = [];
+
+  // Track collapsible sections
+  const sections = new Map(); // sectionName -> { startIndex, endIndex, timestamp, header, expanded }
+  const sectionStack = []; // Track nested sections
 
   const reset = () => {
     properties = {
@@ -264,11 +273,78 @@ const LogFormat = ({
       groupIndex = null,
       level,
       message = '',
-      timestamp
+      timestamp,
+      sectionName = null,
+      sectionHeader = null,
+      sectionExpanded = true,
+      isInSection = false
     } = log;
     if (!message?.length && !timestamp && !level) {
       return <br key={index} />;
     }
+
+    // Check for section markers in the message
+    const sectionStartMatch = message.match(sectionStartRegex);
+    const sectionEndMatch = message.match(sectionEndRegex);
+
+    if (sectionStartMatch) {
+      const [, sectionTimestamp, name, headerText] = sectionStartMatch;
+
+      // Parse ANSI codes in the header text
+      let headerLine = [];
+      let headerOffset = 0;
+      let parsedHeader = '';
+
+      while (headerOffset !== headerText.length) {
+        const str = headerText.substring(headerOffset);
+        const controlSequence = str.match(ansiRegex);
+        if (controlSequence) {
+          headerOffset += controlSequence.index + controlSequence[0].length;
+          handleSequence(controlSequence);
+        } else {
+          const character = str.match(characterRegex);
+          parsedHeader += character[0];
+          headerOffset += 1;
+        }
+      }
+
+      if (parsedHeader) {
+        headerLine.push(
+          linkify(
+            parsedHeader,
+            styles,
+            classNames(
+              properties.foregroundColorClass,
+              properties.backgroundColorClass,
+              properties.classes
+            )
+          )
+        );
+      }
+
+      // Store section info for rendering
+      sections.set(name, {
+        startIndex: index,
+        timestamp: sectionTimestamp,
+        header: headerLine.length > 0 ? headerLine : (parsedHeader || name),
+        expanded: sectionExpanded
+      });
+      sectionStack.push(name);
+      // Don't render the marker line itself
+      return null;
+    }
+
+    if (sectionEndMatch) {
+      const [, , name] = sectionEndMatch;
+      const section = sections.get(name);
+      if (section) {
+        section.endIndex = index;
+      }
+      sectionStack.pop();
+      // Don't render the marker line itself
+      return null;
+    }
+
     let offset = 0;
     while (offset !== message.length) {
       const str = message.substring(offset);
@@ -296,14 +372,19 @@ const LogFormat = ({
       );
     }
 
+    const currentSection = sectionStack.length > 0 ? sectionStack[sectionStack.length - 1] : null;
+    const inSection = currentSection !== null || isInSection;
+
     return (
       <div
         className={classNames('tkn--log-line', {
           [`tkn--log-level--${level}`]: level,
           'tkn--log-line--group': command === 'group',
-          'tkn--log-line--in-group': command !== 'group' && groupIndex !== null
+          'tkn--log-line--in-group': command !== 'group' && groupIndex !== null,
+          'tkn--log-line--in-section': inSection
         })}
         key={index}
+        data-section={currentSection}
       >
         {fields.timestamp && (
           <span className="tkn--log-line--timestamp">
@@ -328,19 +409,114 @@ const LogFormat = ({
             <summary>{line}</summary>
           </details>
         )}
-        {!['group', 'endgroup'].includes(command) && (
+        {sectionName && (
+          <details
+            className="tkn--log-section"
+            open={sectionExpanded}
+          >
+            <summary className="tkn--log-section--header">{sectionHeader || sectionName}</summary>
+          </details>
+        )}
+        {!['group', 'endgroup'].includes(command) && !sectionName && (
           <span className="tkn--log-line--content">{line}</span>
         )}
       </div>
     );
   };
 
-  const convert = () =>
-    logs.map((part, index) => {
+  const convert = () => {
+    const parsedLogs = logs.map((part, index) => {
       text = '';
       line = [];
       return parse(part, index);
+    }).filter(Boolean); // Remove null entries from section markers
+
+    // Group logs by sections
+    const result = [];
+    let currentSectionLogs = [];
+    let currentSectionInfo = null;
+    let currentSectionName = null;
+
+    parsedLogs.forEach((logElement, index) => {
+      const sectionName = logElement?.props?.['data-section'];
+
+      if (sectionName && sectionName !== currentSectionName) {
+        // End previous section if exists
+        if (currentSectionInfo && currentSectionLogs.length > 0) {
+          result.push(
+            <div className="tkn--log-line tkn--log-line--section" key={`section-${currentSectionInfo.timestamp}`}>
+              <details
+                className="tkn--log-section"
+                open={currentSectionInfo.expanded}
+              >
+                <summary className="tkn--log-section--header">
+                  {currentSectionInfo.header}
+                </summary>
+                <div className="tkn--log-section--content">
+                  {currentSectionLogs}
+                </div>
+              </details>
+            </div>
+          );
+        }
+
+        // Start new section
+        const section = sections.get(sectionName);
+        currentSectionInfo = section;
+        currentSectionName = sectionName;
+        currentSectionLogs = [logElement];
+      } else if (sectionName && sectionName === currentSectionName) {
+        // Continue current section
+        currentSectionLogs.push(logElement);
+      } else if (!sectionName && currentSectionInfo) {
+        // End of section - render it
+        result.push(
+          <div className="tkn--log-line tkn--log-line--section" key={`section-${currentSectionInfo.timestamp}`}>
+            <details
+              className="tkn--log-section"
+              open={currentSectionInfo.expanded}
+            >
+              <summary className="tkn--log-section--header">
+                {currentSectionInfo.header}
+              </summary>
+              <div className="tkn--log-section--content">
+                {currentSectionLogs}
+              </div>
+            </details>
+          </div>
+        );
+        currentSectionInfo = null;
+        currentSectionName = null;
+        currentSectionLogs = [];
+        result.push(logElement);
+      } else {
+        // Regular log line
+        result.push(logElement);
+      }
     });
+
+    // Handle any remaining section
+    if (currentSectionInfo && currentSectionLogs.length > 0) {
+      result.push(
+        <div className="tkn--log-line tkn--log-line--section" key={`section-${currentSectionInfo.timestamp}`}>
+          <details
+            className="tkn--log-section"
+            open={currentSectionInfo.expanded}
+          >
+            <summary className="tkn--log-section--header">
+              {currentSectionInfo.header}
+            </summary>
+            <div className="tkn--log-section--content">
+              {currentSectionLogs}
+            </div>
+          </details>
+        </div>
+      );
+    }
+
+    return result;
+  };
+
   return <code>{convert()}</code>;
 };
 
