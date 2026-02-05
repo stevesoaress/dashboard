@@ -73,10 +73,8 @@ $colors: (
 
 .tkn--log-line {
   min-block-size: 1rem; // explicitly set height to hold space for empty log line when timestamps disabled
-  transition: 0s background-color;
   &:hover {
     background-color: #ffffff10;
-    transition-delay: 0.5s;
   }
 
   // set default colours for the log level badge, this will be used for 'info'
