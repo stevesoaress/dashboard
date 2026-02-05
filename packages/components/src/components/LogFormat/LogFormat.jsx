@@ -431,87 +431,112 @@ const LogFormat = ({
       return parse(part, index);
     }).filter(Boolean); // Remove null entries from section markers
 
-    // Group logs by sections
+    // Build nested section structure using a stack-based approach
     const result = [];
-    let currentSectionLogs = [];
-    let currentSectionInfo = null;
-    let currentSectionName = null;
+    const sectionStack = []; // Stack to track open sections: [{name, info, content}]
+    let logIndex = 0;
 
-    parsedLogs.forEach((logElement, index) => {
+    parsedLogs.forEach((logElement) => {
       const sectionName = logElement?.props?.['data-section'];
 
-      if (sectionName && sectionName !== currentSectionName) {
-        // End previous section if exists
-        if (currentSectionInfo && currentSectionLogs.length > 0) {
-          result.push(
-            <div className="tkn--log-line tkn--log-line--section" key={`section-${currentSectionInfo.timestamp}`}>
-              <details
-                className="tkn--log-section"
-                open={currentSectionInfo.expanded}
-              >
-                <summary className="tkn--log-section--header">
-                  {currentSectionInfo.header}
-                </summary>
-                <div className="tkn--log-section--content">
-                  {currentSectionLogs}
-                </div>
-              </details>
-            </div>
-          );
+      if (sectionName) {
+        // Check if this is a new section or continuation of current
+        const currentSection = sectionStack.length > 0 ? sectionStack[sectionStack.length - 1] : null;
+
+        if (!currentSection || sectionName !== currentSection.name) {
+          // Start a new nested section
+          const sectionInfo = sections.get(sectionName);
+          if (sectionInfo) {
+            sectionStack.push({
+              name: sectionName,
+              info: sectionInfo,
+              content: []
+            });
+          }
         }
 
-        // Start new section
-        const section = sections.get(sectionName);
-        currentSectionInfo = section;
-        currentSectionName = sectionName;
-        currentSectionLogs = [logElement];
-      } else if (sectionName && sectionName === currentSectionName) {
-        // Continue current section
-        currentSectionLogs.push(logElement);
-      } else if (!sectionName && currentSectionInfo) {
-        // End of section - render it
-        result.push(
-          <div className="tkn--log-line tkn--log-line--section" key={`section-${currentSectionInfo.timestamp}`}>
+        // Add log to current section (without the data-section attribute to avoid recursion)
+        if (sectionStack.length > 0) {
+          sectionStack[sectionStack.length - 1].content.push(logElement);
+        }
+      } else {
+        // Not in a section
+        if (sectionStack.length > 0) {
+          // Add to innermost section
+          sectionStack[sectionStack.length - 1].content.push(logElement);
+        } else {
+          // Regular log line outside any section
+          result.push(logElement);
+        }
+      }
+
+      // Check if any sections should be closed (based on section end markers)
+      const sectionsToClose = [];
+      sectionStack.forEach((section, stackIndex) => {
+        if (section.info.endIndex === logIndex + 1) {
+          sectionsToClose.push(stackIndex);
+        }
+      });
+
+      // Close sections from innermost to outermost
+      sectionsToClose.sort((a, b) => b - a).forEach(stackIndex => {
+        const section = sectionStack[stackIndex];
+
+        const sectionElement = (
+          <div className="tkn--log-line tkn--log-line--section" key={`section-${section.info.timestamp}`}>
             <details
               className="tkn--log-section"
-              open={currentSectionInfo.expanded}
+              open={section.info.expanded}
             >
               <summary className="tkn--log-section--header">
-                {currentSectionInfo.header}
+                {section.info.header}
               </summary>
               <div className="tkn--log-section--content">
-                {currentSectionLogs}
+                {section.content}
               </div>
             </details>
           </div>
         );
-        currentSectionInfo = null;
-        currentSectionName = null;
-        currentSectionLogs = [];
-        result.push(logElement);
-      } else {
-        // Regular log line
-        result.push(logElement);
-      }
+
+        // Remove closed section from stack
+        sectionStack.splice(stackIndex, 1);
+
+        // Add to parent section or result
+        if (sectionStack.length > 0 && stackIndex > 0) {
+          sectionStack[stackIndex - 1].content.push(sectionElement);
+        } else {
+          result.push(sectionElement);
+        }
+      });
+
+      logIndex++;
     });
 
-    // Handle any remaining section
-    if (currentSectionInfo && currentSectionLogs.length > 0) {
-      result.push(
-        <div className="tkn--log-line tkn--log-line--section" key={`section-${currentSectionInfo.timestamp}`}>
+    // Close any remaining open sections (from innermost to outermost)
+    while (sectionStack.length > 0) {
+      const section = sectionStack.pop();
+
+      const sectionElement = (
+        <div className="tkn--log-line tkn--log-line--section" key={`section-${section.info.timestamp}`}>
           <details
             className="tkn--log-section"
-            open={currentSectionInfo.expanded}
+            open={section.info.expanded}
           >
             <summary className="tkn--log-section--header">
-              {currentSectionInfo.header}
+              {section.info.header}
             </summary>
             <div className="tkn--log-section--content">
-              {currentSectionLogs}
+              {section.content}
             </div>
           </details>
         </div>
       );
+
+      if (sectionStack.length > 0) {
+        sectionStack[sectionStack.length - 1].content.push(sectionElement);
+      } else {
+        result.push(sectionElement);
+      }
     }
 
     return result;

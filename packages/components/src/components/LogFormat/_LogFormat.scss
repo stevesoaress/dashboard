@@ -208,6 +208,15 @@ $colors: (
 
 .tkn--log-section--content {
   margin-inline-start: $spacing-05;
+
+  // Nested sections
+  .tkn--log-line--section {
+    margin-inline-start: $spacing-03;
+
+    .tkn--log-section--content {
+      margin-inline-start: $spacing-05;
+    }
+  }
 }
 
 .tkn--log-line--section {

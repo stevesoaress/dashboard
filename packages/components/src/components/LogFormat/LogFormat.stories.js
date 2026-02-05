@@ -257,6 +257,338 @@ export const CollapsibleSections = {
   }
 };
 
+export const LargeCollapsibleSection = {
+  args: {
+    fields: {
+      timestamp: true,
+      level: true
+    },
+    logs: (() => {
+      const logs = [
+        {
+          timestamp: '2024-11-14T14:10:53.354144861Z',
+          level: 'info',
+          message: 'Starting large data processing job with 50 batches'
+        }
+      ];
+
+      // Generate 50 sections with 50 log lines each (2500 total)
+      const colors = [31, 32, 33, 34, 35, 36, 37, 91, 92, 93, 94, 95, 96, 97];
+      const bgColors = [40, 41, 42, 43, 44, 45, 46, 47, 100, 101, 102, 103, 104, 105, 106, 107];
+      const styles = ['', '\x1b[1m', '\x1b[3m', '\x1b[4m', '\x1b[1m\x1b[3m'];
+      const levels = ['info', 'debug', 'warning', 'error', 'trace'];
+      const sectionColors = [36, 32, 33, 35, 34, 91, 92, 93, 94, 95];
+
+      let recordNum = 1;
+
+      for (let section = 1; section <= 50; section++) {
+        const sectionColor = sectionColors[section % sectionColors.length];
+        const sectionTimestamp = 1700000000 + section;
+
+        // Section start
+        logs.push({
+          timestamp: `2024-11-14T14:${10 + Math.floor(recordNum / 60)}:${(54 + recordNum) % 60}.${String(recordNum).padStart(9, '0')}Z`,
+          message: `\x1b[0Ksection_start:${sectionTimestamp}:batch_${section}\r\x1b[0K\x1b[1m\x1b[${sectionColor}m📦 Batch ${section}/50 (Records ${recordNum}-${recordNum + 49})\x1b[0m`
+        });
+
+        // Generate 50 log lines for this section
+        for (let i = 0; i < 50; i++, recordNum++) {
+          const color = colors[recordNum % colors.length];
+          const bgColor = bgColors[Math.floor(recordNum / 100) % bgColors.length];
+          const style = styles[recordNum % styles.length];
+          const level = levels[recordNum % levels.length];
+
+          let message = '';
+
+          // Add variety to the messages
+          if (recordNum % 10 === 0) {
+            // Every 10th line: colored background with text
+            message = `${style}\x1b[${bgColor}m\x1b[37mProcessing record ${recordNum}/2500 - Batch ${section}\x1b[0m`;
+          } else if (recordNum % 7 === 0) {
+            // Every 7th line: bold colored text
+            message = `\x1b[1m\x1b[${color}mRecord ${recordNum}: Status=SUCCESS, Duration=${Math.floor(Math.random() * 1000)}ms\x1b[0m`;
+          } else if (recordNum % 5 === 0) {
+            // Every 5th line: italic text
+            message = `\x1b[3m\x1b[${color}mValidating data for record ${recordNum}...\x1b[0m`;
+          } else if (recordNum % 3 === 0) {
+            // Every 3rd line: underlined text
+            message = `\x1b[4m\x1b[${color}mTransforming record ${recordNum} with schema v2.1\x1b[0m`;
+          } else {
+            // Regular colored text
+            message = `\x1b[${color}mProcessing record ${recordNum}: ${['pending', 'active', 'completed', 'verified'][recordNum % 4]}\x1b[0m`;
+          }
+
+          logs.push({
+            timestamp: `2024-11-14T14:${10 + Math.floor(recordNum / 60)}:${(54 + recordNum) % 60}.${String(recordNum).padStart(9, '0')}Z`,
+            level,
+            message
+          });
+        }
+
+        // Section end
+        logs.push({
+          timestamp: `2024-11-14T14:${10 + Math.floor(recordNum / 60)}:${(54 + recordNum) % 60}.${String(recordNum).padStart(9, '0')}Z`,
+          message: `\x1b[0Ksection_end:${sectionTimestamp}:batch_${section}\r\x1b[0K`
+        });
+      }
+
+      logs.push({
+        timestamp: '2024-11-14T14:52:35.354144861Z',
+        level: 'info',
+        message: '\x1b[1m\x1b[32m✓ Processing completed successfully - 50 batches, 2500 records processed\x1b[0m'
+      });
+
+      return logs;
+    })()
+  }
+};
+
+export const NestedCollapsibleSections = {
+  args: {
+    fields: {
+      timestamp: true,
+      level: true
+    },
+    logs: (() => {
+      const logs = [
+        {
+          timestamp: '2024-11-14T14:10:53.354144861Z',
+          level: 'info',
+          message: 'Starting deployment pipeline with 1000 log lines'
+        },
+        {
+          timestamp: '2024-11-14T14:10:54.354144861Z',
+          message: '\x1b[0Ksection_start:1700000001:deployment\r\x1b[0K\x1b[1m\x1b[36m🚀 Deployment Process\x1b[0m'
+        },
+        {
+          timestamp: '2024-11-14T14:10:55.354144861Z',
+          level: 'info',
+          message: 'Initializing deployment environment'
+        }
+      ];
+
+      const colors = [31, 32, 33, 34, 35, 36];
+      const levels = ['info', 'debug', 'trace'];
+      let lineNum = 1;
+
+      // Build Stage with nested sections (300 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:10:56.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000002:build\r\x1b[0K\x1b[1m\x1b[32m  🔨 Build Stage\x1b[0m'
+      });
+
+      // NPM Install (100 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:10:57.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000003:npm_install\r\x1b[0K\x1b[1m\x1b[35m    📦 NPM Install\x1b[0m'
+      });
+      for (let i = 0; i < 100; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        logs.push({
+          timestamp: `2024-11-14T14:11:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}mInstalling package ${i + 1}/100: ${['react', 'lodash', 'axios', 'express', 'webpack'][i % 5]}@${i}.0.0\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:11:00.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000003:npm_install\r\x1b[0K'
+      });
+
+      // TypeScript Compilation (100 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:11:01.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000004:typescript\r\x1b[0K\x1b[1m\x1b[34m    📘 TypeScript Compilation\x1b[0m'
+      });
+      for (let i = 0; i < 100; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        logs.push({
+          timestamp: `2024-11-14T14:12:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}mCompiling ${['src/components', 'src/utils', 'src/api', 'src/containers', 'src/routes'][i % 5]}/file${i}.ts\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:12:00.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000004:typescript\r\x1b[0K'
+      });
+
+      // Webpack Bundling (100 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:12:01.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000005:webpack\r\x1b[0K\x1b[1m\x1b[33m    📦 Webpack Bundling\x1b[0m'
+      });
+      for (let i = 0; i < 100; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        logs.push({
+          timestamp: `2024-11-14T14:13:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}mBundling chunk ${i + 1}/100 (${Math.floor(Math.random() * 500)}kb)\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:13:00.${String(lineNum++).padStart(9, '0')}Z`,
+        level: 'info',
+        message: '\x1b[32m✓ Build completed\x1b[0m'
+      });
+      logs.push({
+        timestamp: `2024-11-14T14:13:01.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000005:webpack\r\x1b[0K'
+      });
+      logs.push({
+        timestamp: `2024-11-14T14:13:02.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000002:build\r\x1b[0K'
+      });
+
+      // Test Stage with nested sections (350 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:13:03.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000006:tests\r\x1b[0K\x1b[1m\x1b[33m  🧪 Test Stage\x1b[0m'
+      });
+
+      // Unit Tests (150 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:13:04.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000007:unit_tests\r\x1b[0K\x1b[1m\x1b[36m    🔬 Unit Tests\x1b[0m'
+      });
+      for (let i = 0; i < 150; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        const status = i % 10 === 0 ? '\x1b[32m✓ PASS\x1b[0m' : '\x1b[90m○ SKIP\x1b[0m';
+        logs.push({
+          timestamp: `2024-11-14T14:14:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}m${status} Test suite ${i + 1}/150: ${['Component', 'Utils', 'API', 'Hooks', 'Store'][i % 5]} tests\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:14:00.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000007:unit_tests\r\x1b[0K'
+      });
+
+      // Integration Tests (100 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:14:01.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000008:integration_tests\r\x1b[0K\x1b[1m\x1b[35m    🔗 Integration Tests\x1b[0m'
+      });
+      for (let i = 0; i < 100; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        logs.push({
+          timestamp: `2024-11-14T14:15:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}m\x1b[32m✓\x1b[0m Integration test ${i + 1}/100: ${['API', 'Database', 'Auth', 'Payment', 'Email'][i % 5]} integration\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:15:00.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000008:integration_tests\r\x1b[0K'
+      });
+
+      // E2E Tests (100 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:15:01.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000009:e2e_tests\r\x1b[0K\x1b[1m\x1b[34m    🌐 E2E Tests\x1b[0m'
+      });
+      for (let i = 0; i < 100; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        logs.push({
+          timestamp: `2024-11-14T14:16:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}m\x1b[32m✓\x1b[0m E2E test ${i + 1}/100: ${['Login', 'Checkout', 'Dashboard', 'Profile', 'Settings'][i % 5]} flow\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:16:00.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000009:e2e_tests\r\x1b[0K'
+      });
+      logs.push({
+        timestamp: `2024-11-14T14:16:01.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000006:tests\r\x1b[0K'
+      });
+
+      // Deploy Stage with nested sections (350 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:16:02.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000010:deploy\r\x1b[0K\x1b[1m\x1b[32m  🌐 Deploy Stage\x1b[0m'
+      });
+
+      // Docker Build (150 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:16:03.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000011:docker\r\x1b[0K\x1b[1m\x1b[34m    🐳 Docker Build\x1b[0m'
+      });
+      for (let i = 0; i < 150; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        logs.push({
+          timestamp: `2024-11-14T14:17:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}mStep ${i + 1}/150: ${['COPY', 'RUN', 'ENV', 'EXPOSE', 'CMD'][i % 5]} ${['package.json', 'npm install', 'NODE_ENV=production', 'PORT 3000', 'node server.js'][i % 5]}\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:17:00.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000011:docker\r\x1b[0K'
+      });
+
+      // Kubernetes Deploy (100 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:17:01.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000012:kubernetes\r\x1b[0K\x1b[1m\x1b[36m    ☸️  Kubernetes Deploy\x1b[0m'
+      });
+      for (let i = 0; i < 100; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        logs.push({
+          timestamp: `2024-11-14T14:18:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}mDeploying pod ${i + 1}/100 to ${['us-east-1', 'us-west-2', 'eu-west-1', 'ap-south-1', 'ap-northeast-1'][i % 5]}\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:18:00.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000012:kubernetes\r\x1b[0K'
+      });
+
+      // Health Checks (100 lines)
+      logs.push({
+        timestamp: `2024-11-14T14:18:01.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_start:1700000013:health_checks\r\x1b[0K\x1b[1m\x1b[32m    ✓ Health Checks\x1b[0m'
+      });
+      for (let i = 0; i < 100; i++, lineNum++) {
+        const color = colors[i % colors.length];
+        logs.push({
+          timestamp: `2024-11-14T14:19:${String(i % 60).padStart(2, '0')}.${String(lineNum).padStart(9, '0')}Z`,
+          level: levels[i % levels.length],
+          message: `\x1b[${color}m\x1b[32m✓\x1b[0m Health check ${i + 1}/100: ${['HTTP', 'Database', 'Cache', 'Queue', 'Storage'][i % 5]} - OK\x1b[0m`
+        });
+      }
+      logs.push({
+        timestamp: `2024-11-14T14:19:00.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000013:health_checks\r\x1b[0K'
+      });
+      logs.push({
+        timestamp: `2024-11-14T14:19:01.${String(lineNum++).padStart(9, '0')}Z`,
+        level: 'info',
+        message: '\x1b[32m✓ Deployment completed\x1b[0m'
+      });
+      logs.push({
+        timestamp: `2024-11-14T14:19:02.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000010:deploy\r\x1b[0K'
+      });
+
+      logs.push({
+        timestamp: `2024-11-14T14:19:03.${String(lineNum++).padStart(9, '0')}Z`,
+        level: 'info',
+        message: `\x1b[1m\x1b[32m✓ Deployment pipeline completed successfully - ${lineNum} log lines processed\x1b[0m`
+      });
+      logs.push({
+        timestamp: `2024-11-14T14:19:04.${String(lineNum++).padStart(9, '0')}Z`,
+        message: '\x1b[0Ksection_end:1700000001:deployment\r\x1b[0K'
+      });
+
+      return logs;
+    })()
+  }
+};
+
 export const CollapsibleSectionWithLogLevels = {
   args: {
     fields: {
