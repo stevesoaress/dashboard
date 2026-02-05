@@ -28,10 +28,11 @@ const ansiRegex = /^\u001b([@-_])(.*?)([@-~])/; // Matches ANSI control sequence
 const characterRegex = /[^]/m; // Matches any single character including newlines
 
 // Collapsible section markers - used to create expandable/collapsible log sections
-// Section start format: \e[0Ksection_start:UNIX_TIMESTAMP:SECTION_NAME\r\e[0K + HEADER_TEXT
+// Section start format: \e[0Ksection_start:UNIX_TIMESTAMP:SECTION_NAME[collapsed=true]\r\e[0K + HEADER_TEXT
 // Section end format: \e[0Ksection_end:UNIX_TIMESTAMP:SECTION_NAME\r\e[0K
 // Example: \x1b[0Ksection_start:1700000001:build\r\x1b[0KBuilding Application
-const sectionStartRegex = /\x1b\[0Ksection_start:(\d+):([^\r]+)\r\x1b\[0K(.*)$/;
+// Example with collapsed: \x1b[0Ksection_start:1700000001:build[collapsed=true]\r\x1b[0KBuilding Application
+const sectionStartRegex = /\x1b\[0Ksection_start:(\d+):([^\r\[]+)(?:\[collapsed=([^\]]+)\])?\r\x1b\[0K(.*)$/;
 const sectionEndRegex = /\x1b\[0Ksection_end:(\d+):([^\r]+)\r\x1b\[0K/;
 
 /**
@@ -49,6 +50,49 @@ const getDecoratedLevel = level => {
       <span className="tkn--log-line--level">{level}</span>{' '}
     </>
   );
+};
+
+/**
+ * Formats a duration in milliseconds to a human-readable string
+ * @param {number} durationMs - Duration in milliseconds
+ * @returns {string} Formatted duration (e.g., "2.5s", "1m 30s", "1h 5m")
+ */
+const formatDuration = durationMs => {
+  if (durationMs === null || durationMs === undefined || durationMs < 0) {
+    return '';
+  }
+
+  // Handle very short durations (less than 1 second)
+  if (durationMs < 1000) {
+    if (durationMs === 0) {
+      return '< 1s';
+    }
+    return `${durationMs}ms`;
+  }
+
+  const seconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  }
+
+  if (minutes > 0) {
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  }
+
+  // For durations under 10 seconds, show decimal
+  if (seconds < 10) {
+    const ms = durationMs % 1000;
+    if (ms > 0) {
+      return `${(durationMs / 1000).toFixed(1)}s`;
+    }
+  }
+
+  return `${seconds}s`;
 };
 
 /**
@@ -378,7 +422,8 @@ const LogFormat = ({
 
     // Handle section start marker
     if (sectionStartMatch) {
-      const [, sectionTimestamp, name, headerText] = sectionStartMatch;
+      const [, sectionTimestamp, name, collapsedOption, headerText] = sectionStartMatch;
+      const isCollapsed = collapsedOption === 'true';
 
       // Parse ANSI codes in the header text to preserve colors/styles
       let headerLine = [];
@@ -417,11 +462,14 @@ const LogFormat = ({
       }
 
       // Store section metadata for later rendering
+      // Use isCollapsed to determine initial expanded state (inverted logic: collapsed=true means expanded=false)
       sections.set(name, {
         startIndex: index,
         timestamp: sectionTimestamp,
         header: headerLine.length > 0 ? headerLine : (parsedHeader || name),
-        expanded: sectionExpanded
+        expanded: !isCollapsed, // If collapsed=true, then expanded=false
+        firstLogTimestamp: null, // Will be set to the first log line's timestamp
+        lastLogTimestamp: null   // Will be set to the last log line's timestamp
       });
       sectionStack.push(name);
 
@@ -475,9 +523,20 @@ const LogFormat = ({
       );
     }
 
-    // Determine if this line is inside a section
+    // Determine if this line is inside a section and track timestamps
     const currentSection = sectionStack.length > 0 ? sectionStack[sectionStack.length - 1] : null;
     const inSection = currentSection !== null || isInSection;
+
+    // Track first and last timestamps for duration calculation
+    if (currentSection && timestamp) {
+      const section = sections.get(currentSection);
+      if (section) {
+        if (!section.firstLogTimestamp) {
+          section.firstLogTimestamp = timestamp;
+        }
+        section.lastLogTimestamp = timestamp;
+      }
+    }
 
     // Render the log line with appropriate styling and structure
     return (
@@ -594,6 +653,14 @@ const LogFormat = ({
       sectionsToClose.sort((a, b) => b - a).forEach(stackIndex => {
         const section = sectionStack[stackIndex];
 
+        // Calculate section duration if timestamps are available
+        let duration = null;
+        if (section.info.firstLogTimestamp && section.info.lastLogTimestamp) {
+          const startTime = new Date(section.info.firstLogTimestamp).getTime();
+          const endTime = new Date(section.info.lastLogTimestamp).getTime();
+          duration = endTime - startTime;
+        }
+
         // Create the collapsible section element
         const sectionElement = (
           <div className="tkn--log-line tkn--log-line--section" key={`section-${section.info.timestamp}`}>
@@ -602,7 +669,10 @@ const LogFormat = ({
               open={section.info.expanded}
             >
               <summary className="tkn--log-section--header">
-                {section.info.header}
+                <span className="tkn--log-section--header-text">{section.info.header}</span>
+                {duration !== null && duration >= 0 && (
+                  <span className="tkn--log-section--duration">{formatDuration(duration)}</span>
+                )}
               </summary>
               <div className="tkn--log-section--content">
                 {section.content}
@@ -630,6 +700,14 @@ const LogFormat = ({
     while (sectionStack.length > 0) {
       const section = sectionStack.pop();
 
+      // Calculate section duration if timestamps are available
+      let duration = null;
+      if (section.info.firstLogTimestamp && section.info.lastLogTimestamp) {
+        const startTime = new Date(section.info.firstLogTimestamp).getTime();
+        const endTime = new Date(section.info.lastLogTimestamp).getTime();
+        duration = endTime - startTime;
+      }
+
       const sectionElement = (
         <div className="tkn--log-line tkn--log-line--section" key={`section-${section.info.timestamp}`}>
           <details
@@ -637,7 +715,10 @@ const LogFormat = ({
             open={section.info.expanded}
           >
             <summary className="tkn--log-section--header">
-              {section.info.header}
+              <span className="tkn--log-section--header-text">{section.info.header}</span>
+              {duration !== null && duration >= 0 && (
+                <span className="tkn--log-section--duration">{formatDuration(duration)}</span>
+              )}
             </summary>
             <div className="tkn--log-section--content">
               {section.content}

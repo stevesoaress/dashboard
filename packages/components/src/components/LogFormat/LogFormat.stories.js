@@ -711,3 +711,94 @@ export const CollapsibleSectionWithLogLevels = {
     ]
   }
 };
+
+
+export const CollapsedSectionsWithDuration = {
+  args: {
+    fields: {
+      timestamp: true,
+      level: true
+    },
+    logs: [
+      {
+        timestamp: '2024-11-14T10:00:00.000000000Z',
+        level: 'info',
+        message: '🚀 Starting deployment pipeline'
+      },
+      {
+        timestamp: '2024-11-14T10:00:01.000000000Z',
+        message: '\x1b[0Ksection_start:1700000001:build\r\x1b[0K\x1b[1m\x1b[34m📦 Build Stage\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T10:00:02.000000000Z',
+        level: 'info',
+        message: 'Installing dependencies...'
+      },
+      {
+        timestamp: '2024-11-14T10:00:15.000000000Z',
+        level: 'info',
+        message: 'Compiling TypeScript...'
+      },
+      {
+        timestamp: '2024-11-14T10:00:45.000000000Z',
+        level: 'info',
+        message: '\x1b[32m✓ Build completed\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T10:00:46.000000000Z',
+        message: '\x1b[0Ksection_end:1700000001:build\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T10:00:47.000000000Z',
+        message: '\x1b[0Ksection_start:1700000002:tests[collapsed=true]\r\x1b[0K\x1b[1m\x1b[33m🧪 Test Stage (Collapsed)\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T10:00:48.000000000Z',
+        level: 'info',
+        message: 'Running unit tests...'
+      },
+      {
+        timestamp: '2024-11-14T10:01:30.000000000Z',
+        level: 'info',
+        message: 'Running integration tests...'
+      },
+      {
+        timestamp: '2024-11-14T10:02:15.000000000Z',
+        level: 'info',
+        message: '\x1b[32m✓ All tests passed (127/127)\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T10:02:16.000000000Z',
+        message: '\x1b[0Ksection_end:1700000002:tests\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T10:02:17.000000000Z',
+        message: '\x1b[0Ksection_start:1700000003:deploy\r\x1b[0K\x1b[1m\x1b[32m🚀 Deploy Stage (Expanded)\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T10:02:18.000000000Z',
+        level: 'info',
+        message: 'Building Docker image...'
+      },
+      {
+        timestamp: '2024-11-14T10:03:45.000000000Z',
+        level: 'info',
+        message: 'Pushing to registry...'
+      },
+      {
+        timestamp: '2024-11-14T10:04:30.000000000Z',
+        level: 'info',
+        message: '\x1b[32m✓ Deployment successful\x1b[0m'
+      },
+      {
+        timestamp: '2024-11-14T10:04:31.000000000Z',
+        message: '\x1b[0Ksection_end:1700000003:deploy\r\x1b[0K'
+      },
+      {
+        timestamp: '2024-11-14T10:04:32.000000000Z',
+        level: 'info',
+        message: '\x1b[1m\x1b[32m✓ Pipeline completed successfully\x1b[0m'
+      }
+    ]
+  }
+};

@@ -198,10 +198,31 @@ $colors: (
   font-weight: 600;
   color: var(--cds-text-primary);
   padding: $spacing-01 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-03;
 
   &:hover {
     color: var(--cds-link-primary);
   }
+}
+
+.tkn--log-section--header-text {
+  flex: 1;
+  min-width: 0; // Allow text to shrink if needed
+}
+
+.tkn--log-section--duration {
+  margin-left: $spacing-02;
+  padding: $spacing-01 $spacing-03;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cds-text-secondary, #525252);
+  white-space: nowrap;
+  flex-shrink: 0; // Prevent duration from shrinking
 }
 
 .tkn--log-section--content {
